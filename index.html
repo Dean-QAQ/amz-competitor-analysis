@@ -950,17 +950,20 @@
         border-radius: 8px;
         box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
       }
-      .competitor-card .fold-text {
-        position: relative;
-        max-height: 150px;
-        overflow: hidden;
-        transition: max-height 0.25s ease;
+      .fold-text {
+        display: none;
         white-space: pre-wrap;
         word-break: break-word;
         font-size: 12px;
         line-height: 1.65;
       }
-      .competitor-card .fold-text.expanded { max-height: none; }
+      .fold-text.expanded {
+        display: block;
+      }
+      .competitor-card .fold-text {
+        position: relative;
+        margin: 0;
+      }
       .competitor-card .fold-btn {
         border: 0;
         background: none;
@@ -1042,7 +1045,12 @@
       }
       .summary-brand { font-weight: 700; color: var(--text); }
       .summary-asin { color: var(--muted); font-family: Consolas, "Courier New", monospace; }
-      .summary-line-body .fold-text { max-height: 128px; }
+      .summary-line-body .fold-text {
+        display: none;
+      }
+      .summary-line-body .fold-text.expanded {
+        display: block;
+      }
       .summary-line-body .empty { color: #a3aebc; font-size: 12px; }
       .summary-actions {
         display: flex;
@@ -4604,6 +4612,44 @@ const DATA = {"raw":[{"brand":"HOTWAVE","asin":"B0CFJJFLFY","url":"https://www.a
         const rating = row && row.rating !== null && row.rating !== undefined && row.rating !== "" ? String(row.rating) : "";
         return (rating + "|" + text).slice(0, 320);
       }
+      /* 依据 评论ID / 时间+评论人ID+ASIN / 用户信息 / 文本+星级 生成唯一校验标识。
+       * 后续接口返回的数据先比对签名，重复直接过滤丢弃，仅追加全新独立评论。 */
+      function reviewUniqueKey(row, asin) {
+        const item = row || {};
+        const asinPart = String(asin || item.asin || "").trim().toUpperCase();
+        const id = String(item.reviewId ?? item.review_id ?? item.id ?? "").trim().toUpperCase();
+        if (id) return "ID:" + id + (asinPart ? ":" + asinPart : "");
+        const date = String(item.date ?? item.reviewDate ?? item["日期"] ?? "").trim();
+        const author = String(item.author ?? item.reviewerName ?? item.user ?? item.user_id ?? item["评论人"] ?? item["用户名"] ?? "").trim().toUpperCase();
+        if (date && author) return "DA:" + [asinPart, date, author].join("|");
+        if (author && !date) return "A:" + [asinPart, author].join("|") + "|" + reviewRowSignature(item);
+        if (!author && date) return "D:" + [asinPart, date].join("|") + "|" + reviewRowSignature(item);
+        return "T:" + reviewRowSignature(item) + (asinPart ? "|" + asinPart : "");
+      }
+      function buildReviewSignatureSet(rows, asin) {
+        const seen = new Set();
+        (rows || []).forEach((row) => {
+          const key = reviewUniqueKey(row, asin);
+          if (key) seen.add(key);
+        });
+        return seen;
+      }
+      function dedupeAgainst(rows, existingKeys, asin) {
+        const seen = existingKeys instanceof Set ? existingKeys : new Set(existingKeys || []);
+        const out = [];
+        let filtered = 0;
+        (rows || []).forEach((row) => {
+          const key = reviewUniqueKey(row, asin);
+          if (!key || seen.has(key)) {
+            if (key) filtered += 1;
+            return;
+          }
+          seen.add(key);
+          out.push(row);
+        });
+        out.duplicateCount = filtered;
+        return out;
+      }
       function dedupeReviewRows(rows) {
         const out = [];
         const seen = new Set();
@@ -4628,6 +4674,18 @@ const DATA = {"raw":[{"brand":"HOTWAVE","asin":"B0CFJJFLFY","url":"https://www.a
           rows: deduped,
           rawCount: normalized.length,
           duplicateCount: deduped.duplicateCount || Math.max(0, normalized.length - deduped.length),
+        };
+      }
+      /* 跨数据源全局去重合并：目标集合保留“已获取的全部评论”，后续接口返回的重复项直接过滤。 */
+      function mergeUniqueReviewRows(targetRows, incomingRows, asin) {
+        const base = Array.isArray(targetRows) ? targetRows : [];
+        const signatureSet = buildReviewSignatureSet(base, asin);
+        const added = dedupeAgainst(incomingRows, signatureSet, asin);
+        return {
+          rows: base.concat(added),
+          addedCount: added.length,
+          filteredCount: added.duplicateCount || 0,
+          total: base.concat(added).length,
         };
       }
       function parseReviewTextToRows(text) {
@@ -4952,6 +5010,8 @@ const DATA = {"raw":[{"brand":"HOTWAVE","asin":"B0CFJJFLFY","url":"https://www.a
       function buildReviewSummaryText(state, positiveTop, negativeTop, improvementTop, targetTop, scenarioTop) {
         const total = Math.max(0, Number(state.uniqueCount) || 0);
         const rawCount = Math.max(total, Number(state.rawCount) || total);
+        const mergedUnique = Math.max(total, Number(state.mergedUniqueTotal) || total);
+        const crossFiltered = Number(state.crossSourceFilteredCount) || 0;
         const pct = (n) => Math.round(n * 100 / Math.max(total, 1)) + "%";
         const reviewBalance = state.positiveCount - state.negativeCount;
         const hints = getReviewLearningHints(state.asin);
@@ -4962,6 +5022,7 @@ const DATA = {"raw":[{"brand":"HOTWAVE","asin":"B0CFJJFLFY","url":"https://www.a
         const lines = [];
         lines.push("原始评论样本：" + rawCount + "条" +
           (state.duplicateCount ? "，去重后" + total + "条，剔除重复" + state.duplicateCount + "条" : "，有效分析样本" + total + "条") +
+          (crossFiltered ? "，跨数据源合并后" + mergedUnique + "条（剔除重复" + crossFiltered + "条）" : "") +
           "；好评：" + state.positiveCount + "条，占比" + pct(state.positiveCount) +
           "；差评：" + state.negativeCount + "条，占比" + pct(state.negativeCount) +
           "；中性：" + state.neutralCount + "条，占比" + pct(state.neutralCount) +
@@ -5081,6 +5142,8 @@ const DATA = {"raw":[{"brand":"HOTWAVE","asin":"B0CFJJFLFY","url":"https://www.a
           rawCount: state.rawCount,
           total,
           duplicateCount: state.duplicateCount,
+          mergedUniqueTotal: Array.isArray(out.rawReviews) ? (out.rawReviews.totalUnique || out.rawReviews.length) : total,
+          crossSourceFilteredCount: Array.isArray(out.rawReviews) ? (out.rawReviews.filteredCount || 0) : 0,
           positiveCount: state.positiveCount,
           negativeCount: state.negativeCount,
           neutralCount: state.neutralCount,
@@ -5135,7 +5198,7 @@ const DATA = {"raw":[{"brand":"HOTWAVE","asin":"B0CFJJFLFY","url":"https://www.a
         else if (incoming.optimizationDirection && typeof target.optimizationDirection === "string" && typeof incoming.optimizationDirection === "string") {
           target.optimizationDirection = mergeTextBlock(target.optimizationDirection, incoming.optimizationDirection);
         }
-        ["positiveKeywords", "negativeKeywords", "rawReviews"].forEach((key) => {
+        ["positiveKeywords", "negativeKeywords"].forEach((key) => {
           const base = Array.isArray(target[key]) ? target[key] : [];
           const next = Array.isArray(incoming[key]) ? incoming[key] : [];
           const seen = new Set(base.map((item) => JSON.stringify(item)));
@@ -5148,7 +5211,32 @@ const DATA = {"raw":[{"brand":"HOTWAVE","asin":"B0CFJJFLFY","url":"https://www.a
           });
           if (base.length) target[key] = base;
         });
+        /* rawReviews 跨数据源全局去重：以评论ID / 时间+评论人+ASIN / 用户信息 / 文本签名识别重复 */
+        if (Array.isArray(incoming.rawReviews) && incoming.rawReviews.length) {
+          const targetAsin = target.asin || "";
+          const merged = mergeUniqueReviewRows(Array.isArray(target.rawReviews) ? target.rawReviews : [], incoming.rawReviews, targetAsin);
+          target.rawReviews = merged.rows;
+          target.rawReviews.addedCount = merged.addedCount;
+          target.rawReviews.filteredCount = (target.rawReviews.filteredCount || 0) + merged.filteredCount;
+          target.rawReviews.totalUnique = merged.total;
+        }
         if (incoming.classificationStats && (override || !target.classificationStats)) target.classificationStats = incoming.classificationStats;
+        else if (incoming.classificationStats && target.classificationStats && !override) {
+          /* 分类统计优先用“去重合并后的唯一评论集合”口径，不把多数据源重复样本算进总量 */
+          const baseStats = target.classificationStats;
+          const nextStats = incoming.classificationStats;
+          const baseTotal = Number(baseStats.mergedUniqueTotal ?? baseStats.total ?? 0);
+          const nextTotal = Number(nextStats.mergedUniqueTotal ?? nextStats.total ?? 0);
+          if (nextTotal > baseTotal) {
+            target.classificationStats = Object.assign({}, baseStats, {
+              rawCount: Math.max(Number(baseStats.rawCount) || 0, Number(nextStats.rawCount) || 0),
+              total: Math.max(baseTotal, nextTotal),
+              duplicateCount: (Number(baseStats.duplicateCount) || 0) + (Number(nextStats.duplicateCount) || 0),
+              mergedUniqueTotal: Math.max(baseTotal, nextTotal),
+              crossSourceFilteredCount: (Number(baseStats.crossSourceFilteredCount) || 0) + (Number(nextStats.crossSourceFilteredCount) || 0),
+            });
+          }
+        }
         target.found = !!(target.summary || target.sellingPoints || target.positiveReviews || target.negativeReviews ||
           target.improvementPoints || target.targetAudience || target.useScenarios || target.optimizationDirection ||
           (target.positiveKeywords && target.positiveKeywords.length) || (target.negativeKeywords && target.negativeKeywords.length));
@@ -5733,7 +5821,7 @@ const DATA = {"raw":[{"brand":"HOTWAVE","asin":"B0CFJJFLFY","url":"https://www.a
         }
         _mergeData(target, incoming) {
           if (!incoming || typeof incoming !== "object") return target;
-          const listFields = ["positiveKeywords", "negativeKeywords", "rawReviews"];
+          const listFields = ["positiveKeywords", "negativeKeywords"];
           const lineTextFields = ["summary", "sellingPoints", "positiveReviews", "negativeReviews", "improvementPoints", "targetAudience", "useScenarios"];
           Object.keys(incoming).forEach((k) => {
             const v = incoming[k];
@@ -5763,6 +5851,15 @@ const DATA = {"raw":[{"brand":"HOTWAVE","asin":"B0CFJJFLFY","url":"https://www.a
             }
             if (listFields.includes(k)) {
               target[k] = this._mergeItem(Array.isArray(target[k]) ? target[k] : [], Array.isArray(v) ? v : this._normalizeList(v), true);
+              return;
+            }
+            if (k === "rawReviews") {
+              const rows = Array.isArray(v) ? v : this._normalizeList(v);
+              const merged = mergeUniqueReviewRows(Array.isArray(target[k]) ? target[k] : [], rows, target.asin);
+              target[k] = merged.rows;
+              target[k].addedCount = merged.addedCount;
+              target[k].filteredCount = (target[k].filteredCount || 0) + merged.filteredCount;
+              target[k].totalUnique = merged.total;
               return;
             }
             if (lineTextFields.includes(k) && !this._isEmptyValue(target[k])) {
@@ -5827,6 +5924,30 @@ const DATA = {"raw":[{"brand":"HOTWAVE","asin":"B0CFJJFLFY","url":"https://www.a
           if (!found) {
             this.addLog(asin, kind, "全部数据源均无法获取该维度数据，显示为无数据", "err");
             messages.push("全部数据源均无法获取该维度数据，显示为无数据");
+          }
+          /* 跨数据源评论全局去重后，用唯一评论集合重新统一分析一次，避免各数据源结果重复叠加 */
+          if (kind === "reviewsData" && Array.isArray(merged.rawReviews) && merged.rawReviews.length) {
+            const uniqueRows = merged.rawReviews.filter((row) => row && typeof row === "object");
+            if (uniqueRows.length) {
+              try {
+                const unified = await analyzeReviewsToFields(asin, uniqueRows, "多数据源合并去重评论");
+                unified.classificationStats = Object.assign({}, unified.classificationStats || {}, {
+                  mergedUniqueTotal: uniqueRows.length,
+                  crossSourceFilteredCount: merged.rawReviews.filteredCount || 0,
+                });
+                merged.rawReviews.totalUnique = uniqueRows.length;
+                merged.rawReviews.filteredCount = merged.rawReviews.filteredCount || 0;
+                ["summary", "sellingPoints", "positiveReviews", "negativeReviews", "improvementPoints", "targetAudience", "useScenarios"].forEach((key) => {
+                  if (unified[key]) merged[key] = unified[key];
+                });
+                if (unified.optimizationDirection) merged.optimizationDirection = unified.optimizationDirection;
+                if (unified.classificationStats) merged.classificationStats = unified.classificationStats;
+                messages.push("评论已跨数据源去重合并，最终有效样本 " + uniqueRows.length + " 条");
+                this.addLog(asin, kind, "评论已跨数据源去重合并，最终有效样本 " + uniqueRows.length + " 条", "info");
+              } catch (err) {
+                this.addLog(asin, kind, "评论统一去重分析失败：" + (err && err.message || err), "warn");
+              }
+            }
           }
           return { data: merged, source: used.length ? used[0] : null, messages };
         }
@@ -6622,9 +6743,11 @@ const DATA = {"raw":[{"brand":"HOTWAVE","asin":"B0CFJJFLFY","url":"https://www.a
       }
       function screenshotFieldHtml(column, label, value, fieldKey, badgeText, opts = {}) {
         const text = String(value || "").trim();
-        const textHtml = text
-          ? (opts.fold ? foldTextHtml(text, opts.uid || ("shot-" + column.index + "-" + fieldKey)) : '<div class="screenshot-field-text">' + esc(text) + '</div>')
-          : '<div class="screenshot-field-text empty">无数据</div>';
+        const textHtml = opts.hideText
+          ? ""
+          : (text
+            ? (opts.fold ? foldTextHtml(text, opts.uid || ("shot-" + column.index + "-" + fieldKey)) : '<div class="screenshot-field-text">' + esc(text) + '</div>')
+            : '<div class="screenshot-field-text empty">无数据</div>');
         return '<div class="screenshot-field">' +
           '<div class="screenshot-field-label">' + esc(label) +
           '<span class="screenshot-field-badge">' + esc(badgeText || (text ? "文字 + 截图位" : "截图位")) + '</span></div>' +
@@ -6776,14 +6899,14 @@ const DATA = {"raw":[{"brand":"HOTWAVE","asin":"B0CFJJFLFY","url":"https://www.a
         html += rowHtml("排名", obj["排名"]);
         html += rowHtml("评分", obj["评分"]);
         html += rowHtml("评论数", obj["评论数"]);
-        html += screenshotFieldHtml(column, "变体", obj["变体"], "变体", "变体数据 + 截图位");
+        html += screenshotFieldHtml(column, "变体", obj["变体"], "变体", "截图位", { hideText: true });
         html += rowHtml("产品参数信息", obj["产品参数信息"], { fold: true });
         html += rowHtml("包装尺寸及重量", obj["包装尺寸及重量"], { fold: true });
         html += '</div></div>';
 
         html += '<div class="card-section"><div class="card-section-head gray">销量趋势数据</div><div class="card-section-body">';
         html += screenshotFieldHtml(column, "30天销量(畅销变体)", obj["30天销量(畅销变体)"], "30天销量(畅销变体)", "30天销量 + 截图位");
-        html += screenshotFieldHtml(column, "历史月销", obj["历史月销"], "历史月销", "月销数据 + 截图位");
+        html += screenshotFieldHtml(column, "历史月销", obj["历史月销"], "历史月销", "截图位", { hideText: true });
         html += screenshotFieldHtml(column, "Keepa趋势", obj["Keepa趋势"], "Keepa趋势", "趋势截图位");
         html += '</div></div>';
 
@@ -7305,8 +7428,8 @@ const DATA = {"raw":[{"brand":"HOTWAVE","asin":"B0CFJJFLFY","url":"https://www.a
         const text = overviewText || autoText;
         if (summaryOverviewEditMode) {
           return '<div class="summary-overview-edit">' +
-            '<label for="summaryOverviewText">综合说明</label>' +
-            '<textarea id="summaryOverviewText" aria-label="编辑综合说明">' + esc(text) + '</textarea>' +
+            '<label for="summaryOverviewText">改进方向</label>' +
+            '<textarea id="summaryOverviewText" aria-label="编辑改进方向">' + esc(text) + '</textarea>' +
             '<div class="summary-edit-actions">' +
             '<button class="btn btn-secondary btn-small" type="button" data-overview-cancel>取消</button>' +
             '<button class="btn btn-secondary btn-small" type="button" data-overview-auto>恢复自动</button>' +
@@ -7314,7 +7437,7 @@ const DATA = {"raw":[{"brand":"HOTWAVE","asin":"B0CFJJFLFY","url":"https://www.a
             '</div></div>';
         }
         return '<div class="summary-overview-strip">' +
-          '<strong>综合说明</strong>' +
+          '<strong>改进方向</strong>' +
           '<span class="summary-overview-text">' + esc(text) + '</span>' +
           '<span class="summary-overview-actions">' +
           (overviewManual !== null ? '<button class="btn btn-secondary btn-small" type="button" data-overview-auto>恢复自动</button>' : "") +
