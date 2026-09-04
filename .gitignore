@@ -13,6 +13,7 @@ server.out.txt
 # 浏览器缓存与预览目录
 .chrome-check/
 .xlsx_preview/
+.review_uploads/
 
 # 大体积原始数据文件（按需自行上传）
 *.xlsx

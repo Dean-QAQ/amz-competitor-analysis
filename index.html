@@ -1256,6 +1256,25 @@
         font-size: 12px;
         color: #64748b;
       }
+      .empty-card .card-section-body {
+        min-height: 66px;
+        display: flex;
+        align-items: center;
+      }
+      .empty-column-state {
+        width: 100%;
+        padding: 10px;
+        border: 1px dashed #cbd5e1;
+        border-radius: 8px;
+        background: #f8fafc;
+        color: #475569;
+        font-size: 12px;
+        line-height: 1.6;
+      }
+      .empty-column-state.muted {
+        color: #94a3b8;
+        text-align: center;
+      }
       .summary-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1600,7 +1619,7 @@
           <textarea id="reviewImportText" placeholder="粘贴原始评论、拖拽评论文件，或直接输入文本，例如：&#10;5星：安装很简单，多功能，折叠后很省空间。&#10;2星：塑料有点薄，阻力带用了几次就断了。"></textarea>
           <div class="review-import-tools">
             <button class="btn btn-secondary btn-small" id="reviewImportFileBtn" type="button">导入文件</button>
-            <span class="tool-note">支持 txt / csv / json / jsonl，文件可拖拽导入，文本可直接粘贴识别，评论量不设 1000 条上限。</span>
+            <span class="tool-note">支持 xlsx / xlsm / csv / json / jsonl / txt，文件可拖拽导入，文本可直接粘贴识别，评论量不设 1000 条上限。</span>
           </div>
           <div class="review-import-drop-tip" id="reviewImportDropTip"><strong>拖拽文件</strong> 到输入框即可自动载入，<strong>粘贴文本</strong> 后会立即识别评论结构并预览数量，导入更多样本也可以继续分析。</div>
           <div class="review-import-progress" id="reviewImportProgress" hidden>
@@ -1871,7 +1890,8 @@
     <script>
 const DATA = {"raw":[{"brand":"HOTWAVE","asin":"B0CFJJFLFY","url":"https://www.amazon.com/dp/B0CFJJFLFY","title":"Push Up Board, Portable PushUp Board, Foldable 20 in 1 Push Up Bar | Multifunctional Pushup Handles for Floor, Professional Strength Training","price":null,"originalPrice":null,"discount":null,"launchDate":"2023-08-24(1,077天)","rankCategory":"#398 in Sports & Outdoors","rankSubcategory":"#3 in Strength Training Pushup Stands","rating":4.5,"reviewCount":5894,"variants":null,"productParams":"材料 丙烯腈-丁二烯-苯乙烯共聚物（ABS）\n手柄类型 ABS\n可以自由组装配件来完成训练：可折叠俯卧撑板、独特的3节杠铃、8根强力阻力带、2个脚踝绑带、门锚、健腹轮","packageInfo":"39.12 x 30.23 x 12.19 cm\n3.86 kg","sales30d":null,"monthlySales":null,"keepaTrend":null,"aiCommentScreenshot":null},{"brand":"LALAHIGH","asin":"B0CSD1DDWD","url":"https://www.amazon.com/dp/B0CSD1DDWD","title":"Push Up Board,36 in 1 Home Gym Equipment with Ab Roller Wheel & Resistance Bands, Portable Foldable Workout Board for Full Body Strength","price":null,"originalPrice":null,"discount":null,"launchDate":"2024-01-15(933天)","rankCategory":"#11,449 in Sports & Outdoors","rankSubcategory":"#13 in Strength Training Pushup Stands","rating":4.3,"reviewCount":3680,"variants":null,"productParams":"材料 聚丙烯（PP）\n产品尺寸 长31英寸 x 宽10英寸 x 高1英寸\n包含组件 1 x LALAHIGH 多功能健身板，6 x 阻力带，2 x 阻力带手柄，1 x 普拉提杆，2 x 健腹轮，2 x 俯卧撑手柄，2 x 脚踝绑带，1 x 门锚，8 x 登山扣，防滑垫","packageInfo":"40.64 x 26.42 x 15.49 cm\n3.88Kg","sales30d":null,"monthlySales":null,"keepaTrend":null,"aiCommentScreenshot":null},{"brand":"MHCYAB","asin":"B0FHHLZT15","url":"https://www.amazon.com/dp/B0FHHLZT15","title":"Push Up Board for Men - 15-in-1 Foldable Pushup Board with Push Up Bar, Handles & Bands, Portable Home Gym & Workout Equipment","price":null,"originalPrice":null,"discount":null,"launchDate":"2025-08-13(357天)","rankCategory":"#19,836 in Sports & Outdoors","rankSubcategory":"#20 in Strength Training Pushup Stands","rating":4.6,"reviewCount":89,"variants":null,"productParams":"材料 聚氯乙烯（PVC）\n张力支撑 500磅\n表带类型 弹性阻力带\n包含组件 把手、俯卧撑板、阻力带","packageInfo":"32.77 x 19.81 x 9.65cm\n961.62g","sales30d":null,"monthlySales":null,"keepaTrend":null,"aiCommentScreenshot":null},{"brand":"","asin":"","url":"","title":"","price":null,"originalPrice":null,"discount":null,"launchDate":"","rankCategory":"","rankSubcategory":"","rating":null,"reviewCount":null,"variants":null,"productParams":null,"packageInfo":null,"sales30d":null,"monthlySales":null,"keepaTrend":null,"aiCommentScreenshot":null},{"brand":"","asin":"","url":"","title":"","price":null,"originalPrice":null,"discount":null,"launchDate":"","rankCategory":"","rankSubcategory":"","rating":null,"reviewCount":null,"variants":null,"productParams":null,"packageInfo":null,"sales30d":null,"monthlySales":null,"keepaTrend":null,"aiCommentScreenshot":null},{"brand":"","asin":"","url":"","title":"","price":null,"originalPrice":null,"discount":null,"launchDate":"","rankCategory":"","rankSubcategory":"","rating":null,"reviewCount":null,"variants":null,"productParams":null,"packageInfo":null,"sales30d":null,"monthlySales":null,"keepaTrend":null,"aiCommentScreenshot":null}],"analysis":[]};
 
-      const DEFAULT_ASINS = DATA.raw.map((p) => p.asin);
+      /* 初始页面六列全部保持空位；样例数据仍保留在本地数据源中，输入 ASIN 后按本列独立查询。 */
+      const DEFAULT_ASINS = ["", "", "", "", "", ""];
       /* ============================================================
        * 基础工具与统一数据格式
        * ============================================================ */
@@ -1903,7 +1923,7 @@ const DATA = {"raw":[{"brand":"HOTWAVE","asin":"B0CFJJFLFY","url":"https://www.a
         if (kind === "salesData") return Object.assign(base, { sales30d: null, monthlySales: null, monthlyTrend: null, bsrCategory: null, bsrSubcategory: null, salesTrend: null, isMockEstimate: false });
         if (kind === "keepaData") return Object.assign(base, { priceTrend: null, bsrTrend: null, buyBoxOwnership: null, updatedAt: null, isMockEstimate: false });
         if (kind === "reviewsData") return Object.assign(base, { summary: null, sellingPoints: null, positiveReviews: null, negativeReviews: null, improvementPoints: null, targetAudience: null, useScenarios: null, optimizationDirection: null, positiveKeywords: [], negativeKeywords: [], rawReviews: [], classificationStats: null, isMockEstimate: false });
-        return Object.assign(base, { material: null, productSize: null, packageSize: null, packageWeight: null, variants: null, variantCount: null, productParams: null, packageInfo: null, isMockEstimate: false });
+        return Object.assign(base, { material: null, color: null, productSize: null, productWeight: null, includedComponents: null, packageSize: null, packageWeight: null, variants: null, variantCount: null, productParams: null, packageInfo: null, isMockEstimate: false });
       }
       function empty(kind, asin, marketplace) {
         return JSON.parse(JSON.stringify(emptyShape(kind, asin, marketplace)));
@@ -1916,7 +1936,7 @@ const DATA = {"raw":[{"brand":"HOTWAVE","asin":"B0CFJJFLFY","url":"https://www.a
       const CACHE_KEY = "amz_provider_cache_v1";
       /* 升级版本号强制清掉旧缓存，避免旧数据里缺失的图片/上架日期继续被优先命中。 */
 /* v9：强制清缓存，避免旧数据里缺失的图片/串数据的评论继续被命中 */
-const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
+const CACHE_SCHEMA_VERSION = "v12-empty-start-asin-scoped-review-import-upload-fresh";
       const SCREENSHOT_KEY = "amz_competitor_screenshots_v1";
       const QUOTA_KEY = "amz_keepa_quota";
       const CACHE_TTL = 24 * 60 * 60 * 1000;
@@ -2950,16 +2970,27 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
       }
       function payloadRecordForAsin(raw, asin) {
         const src = unwrapRemotePayload(raw);
-        if (!Array.isArray(src)) return src || {};
-        if (!src.length) return {};
         const upper = String(asin || "").trim().toUpperCase();
+        const recordAsin = (item) => String(item && (item.asin ?? item.ASIN ?? item.parentAsin ?? item.childAsin ?? item["ASIN"] ?? item.dimVal ?? "")).trim().toUpperCase();
+        if (!Array.isArray(src)) {
+          const srcAsin = recordAsin(src);
+          if (upper && srcAsin && srcAsin !== upper) return {};
+          return src || {};
+        }
+        if (!src.length) return {};
         const matched = src.find((item) => {
           if (!item || typeof item !== "object") return false;
-          const itemAsin = String(item.asin ?? item.ASIN ?? item.parentAsin ?? item.childAsin ?? item["ASIN"] ?? item.dimVal ?? "").trim().toUpperCase();
+          const itemAsin = recordAsin(item);
           if (upper && itemAsin.indexOf(upper) !== -1) return true;
           return itemAsin && itemAsin === upper;
         });
-        return unwrapRemotePayload(matched || src[0]) || {};
+        if (matched) return unwrapRemotePayload(matched) || {};
+        if (src.length === 1) {
+          const only = src[0];
+          const onlyAsin = recordAsin(only);
+          if (!upper || !onlyAsin || onlyAsin === upper) return unwrapRemotePayload(only) || {};
+        }
+        return {};
       }
       function compactObject(obj) {
         const out = {};
@@ -3120,11 +3151,14 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
           "improvementPoints", "targetAudience", "useScenarios", "optimizationDirection",
           "AI评论分析", "产品卖点", "好评点", "差评点", "待改善点", "使用人群", "使用场景", "优化方向",
         ];
+        const targetAsin = String(asin || "").trim().toUpperCase();
         const src = Array.isArray(root)
           ? (root.some((item) => item && typeof item === "object" && reviewObjectKeys.some((key) => item[key] !== undefined))
               ? payloadRecordForAsin(root, asin)
               : { rawReviews: root })
           : (root || {});
+        const sourceAsin = String(src && (src.asin ?? src.ASIN ?? src.parentAsin ?? src.parent_asin ?? "")).trim().toUpperCase();
+        if (targetAsin && sourceAsin && sourceAsin !== targetAsin) return empty("reviewsData", asin, marketplace);
         const out = empty("reviewsData", asin, marketplace);
         /* 数组/对象统一转成“每条一行”的文本，避免列表型评论字段显示成空或 [object Object] */
         const toLines = (value) => {
@@ -3168,7 +3202,7 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
         })(src.optimizationDirection ?? src.optimization_direction ?? src["优化方向"]);
         out.positiveKeywords = Array.isArray(src.positiveKeywords) ? src.positiveKeywords : (Array.isArray(src.topPositiveKeywords) ? src.topPositiveKeywords : (Array.isArray(src.proKeywords) ? src.proKeywords : []));
         out.negativeKeywords = Array.isArray(src.negativeKeywords) ? src.negativeKeywords : (Array.isArray(src.topNegativeKeywords) ? src.topNegativeKeywords : (Array.isArray(src.conKeywords) ? src.conKeywords : []));
-        const rawReviewRows = normalizeReviewRows(src.rawReviews ?? src.reviewsList ?? src.reviewList ?? src.review_list ?? src.reviewRows ?? src.review_rows ?? src.comments ?? src.commentList ?? src.items ?? src.rows ?? customersSay.reviews ?? customersSay.items);
+        const rawReviewRows = normalizeReviewRows(src.rawReviews ?? src.reviewsList ?? src.reviewList ?? src.review_list ?? src.reviewRows ?? src.review_rows ?? src.comments ?? src.commentList ?? src.items ?? src.rows ?? customersSay.reviews ?? customersSay.items, asin);
         if (rawReviewRows.length) {
           mergeReviewOutput(out, analyzeReviewsToFields(asin, rawReviewRows, "接口原始评论"), false);
         }
@@ -3192,9 +3226,12 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
         out.found = !!src;
         const attrs = src.attributes ?? src.attrs ?? src.specs ?? src.specifications ?? src.productAttributes ?? {};
         out.material = asText(src.material ?? attrs.material ?? attrs.Material ?? attrs["材质"] ?? src.mainMaterial ?? src.bodyMaterial ?? src["材质"]);
+        out.color = asText(src.color ?? src.colour ?? attrs.color ?? attrs.Color ?? attrs.Colour ?? attrs["颜色"]);
         out.productSize = asText(src.productSize ?? attrs.productSize ?? attrs["Product Dimensions"] ?? attrs.product_dimensions ?? src.dimensions ?? src.productDimensions ?? src.size ?? src["产品尺寸"]);
+        out.productWeight = asText(src.productWeight ?? src.itemWeight ?? attrs.itemWeight ?? attrs["Item Weight"] ?? attrs["产品重量"] ?? src["产品重量"]);
+        out.includedComponents = asText(src.includedComponents ?? src.components ?? attrs.includedComponents ?? attrs["Included Components"] ?? attrs["包含组件"] ?? src["包装内容"]);
         out.packageSize = asText(src.packageSize ?? attrs.packageSize ?? attrs["Package Dimensions"] ?? src.packageDimensions ?? src.package_dimension ?? src["包装尺寸"]);
-        out.packageWeight = asText(src.packageWeight ?? src.weight ?? src.itemWeight ?? src.packagingWeight ?? src.shippingWeight ?? attrs.packageWeight ?? attrs["Package Weight"] ?? src.specs?.packageWeight ?? src["包装重量"]);
+        out.packageWeight = asText(src.packageWeight ?? src.packagingWeight ?? src.shippingWeight ?? attrs.packageWeight ?? attrs["Package Weight"] ?? attrs["Shipping Weight"] ?? src.specs?.packageWeight ?? src["包装重量"]);
         out.variants = Array.isArray(src.variants) ? src.variants : (Array.isArray(src.variantList) ? src.variantList : (Array.isArray(src.variations) ? src.variations : (asText(src.variants ?? src.variationSummary) || null)));
         out.variantCount = asNumber(src.variantCount ?? src.variantsCount ?? src.variantNum ?? src.variationCount ?? src.variation_count ?? src["变体数"]);
         out.productParams = asText(src.productParams ?? src.productParamsText ?? src.params ?? src.details ?? src.specs?.details ?? src.attributesText ?? src["产品参数信息"]) || asText(attrs);
@@ -3921,7 +3958,7 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
             this._applyCustomersSay(out, customers);
             mergeReviewOutput(out, normalizeReviewsPayload(asin, marketplace, customers), false);
           } catch (err) { if (err instanceof ProviderNotConfiguredError) throw err; }
-          const normalizedRows = normalizeReviewRows(reviewRows);
+          const normalizedRows = normalizeReviewRows(reviewRows, asin);
           if (normalizedRows.length) {
             mergeReviewOutput(out, analyzeReviewsToFields(asin, normalizedRows, "Sorftime 原始评论"), false);
           }
@@ -3939,7 +3976,10 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
           const out = empty("specs", asin, marketplace);
           out.found = !!(src && (src.attributes || src.package_size_cm || src.weight_g || src.variation_count));
           out.material = asText(attrs.Material || attrs.material);
+          out.color = asText(attrs.Color || attrs.Colour || attrs.color || attrs.colour);
           out.productSize = asText(attrs["Product Dimensions"] || attrs.product_dimensions || attrs.Size);
+          out.productWeight = asText(attrs["Item Weight"] || attrs.item_weight || attrs.productWeight);
+          out.includedComponents = asText(attrs["Included Components"] || attrs.included_components || attrs.components);
           out.packageSize = asText(src.package_size_cm);
           out.packageWeight = src.weight_g !== undefined ? (String(src.weight_g) + " g") : null;
           out.variants = src.variation_count !== undefined ? (String(src.variation_count) + " 个变体") : null;
@@ -4468,28 +4508,38 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
           rating,
         };
       }
-      function normalizeReviewRows(value) {
+      function normalizeReviewRows(value, asin) {
         if (!value) return [];
         const src = Array.isArray(value) ? value : [value];
         const out = [];
+        const targetAsin = String(asin || "").trim().toUpperCase();
         src.forEach((item) => {
           if (typeof item === "string") {
             const parsed = parseReviewTextRecord(item);
-            if (parsed) out.push(parsed);
+            if (parsed) {
+              parsed.asin = targetAsin || parsed.asin || null;
+              out.push(parsed);
+            }
             return;
           }
           if (!item || typeof item !== "object") return;
+          const rowAsin = String(item.asin ?? item.ASIN ?? item.parentAsin ?? item.parent_asin ?? "").trim().toUpperCase();
+          if (targetAsin && rowAsin && rowAsin !== targetAsin) return;
           const title = asText(item.title ?? item.reviewTitle ?? item["评论标题"]);
           const content = asText(item.content ?? item.comment ?? item.text ?? item.body ?? item.reviewText ?? item.reviewBody ?? item["评论内容"] ?? item["评论正文"]);
           const mergedText = asText(item.text ?? item.reviewText ?? item.reviewBody) || [title, content].filter(Boolean).join("：");
           const rating = asNumber(item.rating ?? item.star ?? item.stars ?? item["星级"] ?? item["评分"]) ?? detectReviewRating([title, content, mergedText].filter(Boolean).join(" "));
           const date = asText(item.date ?? item.reviewDate ?? item["日期"]);
           const row = {
+            reviewId: asText(item.reviewId ?? item.review_id ?? item.id ?? item["评论ID"] ?? item["评价ID"]) || null,
+            reviewerId: asText(item.reviewerId ?? item.reviewer_id ?? item.customerId ?? item.userId ?? item.profileId ?? item["评论人ID"] ?? item["用户ID"]) || null,
+            reviewerName: asText(item.reviewerName ?? item.reviewer ?? item.author ?? item.user ?? item.userName ?? item.customerName ?? item["评论人"] ?? item["用户名"] ?? item["买家"]) || null,
             title: title || null,
             content: content || null,
             text: mergedText || [title, content].filter(Boolean).join("：") || null,
             rating,
             date,
+            asin: rowAsin || targetAsin || null,
           };
           if (row.text || row.title || row.content) out.push(row);
         });
@@ -4538,7 +4588,7 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
         });
         return bestScore >= 2 ? best : null;
       }
-      function parseDelimitedReviewRows(raw) {
+      function parseDelimitedReviewRows(raw, asin) {
         const text = String(raw || "").replace(/\uFEFF/g, "").trim();
         if (!text) return [];
         const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
@@ -4578,7 +4628,7 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
               content: getByHeader(map, "content", "comment", "review", "body", "text", "reviewtext", "reviewbody", "reviewcomment", "评论内容", "评论正文"),
               date: getByHeader(map, "date", "reviewdate", "time", "created", "日期", "时间"),
             };
-            const normalized = normalizeReviewRows([row]);
+            const normalized = normalizeReviewRows([row], asin);
             normalized.forEach((item) => rows.push(item));
           } else {
             const row = {
@@ -4586,13 +4636,13 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
               title: cells.length > 2 ? cells[1] : null,
               content: cells.length > 2 ? cells.slice(2).join(separator).trim() : (cells[1] || cells[0]),
             };
-            const normalized = normalizeReviewRows([row]);
+            const normalized = normalizeReviewRows([row], asin);
             normalized.forEach((item) => rows.push(item));
           }
         });
         return rows.length ? dedupeReviewRows(rows) : [];
       }
-      function parseJsonLinesReviewRows(raw) {
+      function parseJsonLinesReviewRows(raw, asin) {
         const text = String(raw || "").replace(/\uFEFF/g, "").trim();
         if (!text) return [];
         const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
@@ -4604,7 +4654,7 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
           try {
             const parsed = JSON.parse(line);
             parsedCount += 1;
-            normalizeReviewRows(parsed).forEach((item) => rows.push(item));
+            normalizeReviewRows(parsed, asin).forEach((item) => rows.push(item));
           } catch (err) {
             return [];
           }
@@ -4625,10 +4675,12 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
       function reviewUniqueKey(row, asin) {
         const item = row || {};
         const asinPart = String(asin || item.asin || "").trim().toUpperCase();
+        const rowAsin = String(item.asin ?? item.ASIN ?? item.parentAsin ?? item.parent_asin ?? "").trim().toUpperCase();
+        if (asinPart && rowAsin && rowAsin !== asinPart) return null;
         const id = String(item.reviewId ?? item.review_id ?? item.id ?? "").trim().toUpperCase();
         if (id) return "ID:" + id + (asinPart ? ":" + asinPart : "");
         const date = String(item.date ?? item.reviewDate ?? item["日期"] ?? "").trim();
-        const author = String(item.author ?? item.reviewerName ?? item.user ?? item.user_id ?? item["评论人"] ?? item["用户名"] ?? "").trim().toUpperCase();
+        const author = String(item.reviewerId ?? item.reviewer_id ?? item.customerId ?? item.userId ?? item.profileId ?? item.author ?? item.reviewerName ?? item.user ?? item.user_id ?? item["评论人"] ?? item["用户名"] ?? "").trim().toUpperCase();
         if (date && author) return "DA:" + [asinPart, date, author].join("|");
         if (author && !date) return "A:" + [asinPart, author].join("|") + "|" + reviewRowSignature(item);
         if (!author && date) return "D:" + [asinPart, date].join("|") + "|" + reviewRowSignature(item);
@@ -4675,8 +4727,8 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
         out.duplicateCount = duplicates;
         return out;
       }
-      function prepareReviewRows(rawRows) {
-        const normalized = normalizeReviewRows(rawRows);
+      function prepareReviewRows(rawRows, asin) {
+        const normalized = normalizeReviewRows(rawRows, asin);
         const deduped = dedupeReviewRows(normalized);
         return {
           rows: deduped,
@@ -4696,7 +4748,7 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
           total: base.concat(added).length,
         };
       }
-      function parseReviewTextToRows(text) {
+      function parseReviewTextToRows(text, asin) {
         const raw = String(text || "").trim();
         if (!raw) return [];
         if (/^[\[{]/.test(raw)) {
@@ -4705,15 +4757,15 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
             const container = parsed && typeof parsed === "object" && !Array.isArray(parsed)
               ? (parsed.reviews ?? parsed.items ?? parsed.rows ?? parsed.data ?? parsed.comments ?? parsed.list ?? parsed.result)
               : parsed;
-            const rows = normalizeReviewRows(container !== undefined ? container : parsed);
+            const rows = normalizeReviewRows(container !== undefined ? container : parsed, asin);
             if (rows.length) return dedupeReviewRows(rows);
           } catch (err) {
             /* JSON 解析失败时退回文本分段 */
           }
         }
-        const jsonLines = parseJsonLinesReviewRows(raw);
+        const jsonLines = parseJsonLinesReviewRows(raw, asin);
         if (jsonLines.length) return jsonLines;
-        const delimitedRows = parseDelimitedReviewRows(raw);
+        const delimitedRows = parseDelimitedReviewRows(raw, asin);
         if (delimitedRows.length) return delimitedRows;
         let chunks = raw.split(/\n\s*\n+/).map((x) => x.trim()).filter(Boolean);
         if (chunks.length <= 1) {
@@ -4722,7 +4774,7 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
         if (chunks.length <= 1 && /[;；]/.test(raw)) {
           chunks = raw.split(/[;；]+/).map((x) => x.trim()).filter(Boolean);
         }
-        const rows = normalizeReviewRows(chunks.length ? chunks : [raw]);
+        const rows = normalizeReviewRows(chunks.length ? chunks : [raw], asin);
         return rows.length ? dedupeReviewRows(rows) : [];
       }
       function reviewSentiment(row, lowerText) {
@@ -4774,8 +4826,13 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
         });
         return out;
       }
+      /* 评论智能分析展示规范：六大维度每点默认最多 5 小点；
+       * 手动编辑保存的是最终文本，不受此上限约束。 */
+      function capReviewPointsToFive(value) {
+        return uniqueTextItems(splitSummaryLines(value).map(stripSummaryCount)).slice(0, 5).join("\n") || null;
+      }
       /* v3：彻底丢弃旧版全局混合词库（其中包含跨 ASIN 串数据的脏数据），按 ASIN 隔离重新学习 */
-      const REVIEW_LEARNING_KEY = "amz_review_learning_v3";
+      const REVIEW_LEARNING_KEY = "amz_review_learning_v6";
       function emptyReviewLearningBucket() {
         return {
           sellingPoints: [],
@@ -4974,6 +5031,8 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
           positiveCount: 0,
           negativeCount: 0,
           neutralCount: 0,
+          allReviews: [],
+          allReviewLimit: uniqueCount > 50000 ? 30000 : Math.max(uniqueCount, 0),
           sampleReviews: [],
           sampleLimit: uniqueCount > 5000 ? 360 : uniqueCount > 2000 ? 300 : uniqueCount > 800 ? 240 : 160,
           ruleCounts: {
@@ -4993,6 +5052,7 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
         if (sentiment === "positive") state.positiveCount += 1;
         else if (sentiment === "negative") state.negativeCount += 1;
         else state.neutralCount += 1;
+        if (state.allReviews.length < state.allReviewLimit) state.allReviews.push(row);
         if (state.sampleReviews.length < state.sampleLimit) state.sampleReviews.push(row);
         const applyRules = (bucket, rules, sentimentFilter) => {
           if (sentimentFilter && sentimentFilter !== sentiment) return;
@@ -5128,8 +5188,8 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
         const positiveTop = topCountEntries(state.ruleCounts.positiveReviews, total, 5);
         const negativeTop = topCountEntries(state.ruleCounts.negativeReviews, total, 5);
         const improvementTop = topCountEntries(state.ruleCounts.improvementPoints, total, 5);
-        const targetTop = topCountEntries(state.ruleCounts.targetAudience, total, 3);
-        const scenarioTop = topCountEntries(state.ruleCounts.useScenarios, total, 3);
+        const targetTop = topCountEntries(state.ruleCounts.targetAudience, total, 5);
+        const scenarioTop = topCountEntries(state.ruleCounts.useScenarios, total, 5);
         out.summary = buildReviewSummaryText(state, positiveTop, negativeTop, improvementTop, targetTop, scenarioTop);
         out.sellingPoints = formatRuleCounts(state.ruleCounts.sellingPoints, total, 5);
         out.positiveReviews = formatRuleCounts(state.ruleCounts.positiveReviews, total, 5);
@@ -5139,7 +5199,9 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
         out.useScenarios = formatRuleCounts(state.ruleCounts.useScenarios, total, 5);
         out.positiveKeywords = splitSummaryLines(out.positiveReviews).map((line) => line.replace(/（.*$/, ""));
         out.negativeKeywords = splitSummaryLines(out.negativeReviews).map((line) => line.replace(/（.*$/, ""));
-        out.rawReviews = state.sampleReviews.slice();
+        out.rawReviews = (state.allReviews && state.allReviews.length ? state.allReviews : state.sampleReviews).slice();
+        out.rawReviews.truncated = state.allReviews && state.allReviews.length < total;
+        out.rawReviews.totalUnique = total;
         out.classificationStats = {
           rawCount: state.rawCount,
           total,
@@ -5163,7 +5225,7 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
         return out;
       }
       function analyzeReviewsToFields(asin, rawRows, sourceLabel) {
-        const prepared = prepareReviewRows(rawRows);
+        const prepared = prepareReviewRows(rawRows, asin);
         const state = createReviewAnalysisState(asin, sourceLabel, prepared.rawCount, prepared.duplicateCount, prepared.rows.length);
         prepared.rows.forEach((row) => accumulateReviewRow(state, row));
         return finalizeReviewAnalysisState(state);
@@ -5175,7 +5237,7 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
         });
       }
       async function analyzeReviewsToFieldsAsync(asin, rawRows, sourceLabel, onProgress) {
-        const prepared = prepareReviewRows(rawRows);
+        const prepared = prepareReviewRows(rawRows, asin);
         const state = createReviewAnalysisState(asin, sourceLabel, prepared.rawCount, prepared.duplicateCount, prepared.rows.length);
         const rows = prepared.rows;
         const chunkSize = rows.length > 12000 ? 600 : rows.length > 6000 ? 400 : rows.length > 2000 ? 250 : rows.length > 800 ? 180 : 120;
@@ -5189,6 +5251,11 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
       }
       function mergeReviewOutput(target, incoming, override) {
         if (!incoming || typeof incoming !== "object") return target;
+        if (target && target.asin && incoming.asin) {
+          const targetAsin = String(target.asin || "").trim().toUpperCase();
+          const incomingAsin = String(incoming.asin || "").trim().toUpperCase();
+          if (targetAsin && incomingAsin && targetAsin !== incomingAsin) return target;
+        }
         const textKeys = ["summary", "sellingPoints", "positiveReviews", "negativeReviews", "improvementPoints", "targetAudience", "useScenarios"];
         const mergeTextBlock = (base, next) => uniqueTextItems([].concat(splitSummaryLines(base), splitSummaryLines(next))).join("\n") || base || next || null;
         textKeys.forEach((key) => {
@@ -5216,7 +5283,13 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
         /* rawReviews 跨数据源全局去重：以评论ID / 时间+评论人+ASIN / 用户信息 / 文本签名识别重复 */
         if (Array.isArray(incoming.rawReviews) && incoming.rawReviews.length) {
           const targetAsin = target.asin || "";
-          const merged = mergeUniqueReviewRows(Array.isArray(target.rawReviews) ? target.rawReviews : [], incoming.rawReviews, targetAsin);
+          const scopedIncoming = targetAsin
+            ? incoming.rawReviews.filter((row) => {
+              const rowAsin = String(row && (row.asin ?? row.ASIN ?? row.parentAsin ?? row.parent_asin) || "").trim().toUpperCase();
+              return !rowAsin || rowAsin === String(targetAsin).trim().toUpperCase();
+            })
+            : incoming.rawReviews;
+          const merged = mergeUniqueReviewRows(Array.isArray(target.rawReviews) ? target.rawReviews : [], scopedIncoming, targetAsin);
           target.rawReviews = merged.rows;
           target.rawReviews.addedCount = merged.addedCount;
           target.rawReviews.filteredCount = (target.rawReviews.filteredCount || 0) + merged.filteredCount;
@@ -5332,6 +5405,11 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
             reviewCount: item.reviewCount || item["评分数"] || item["评论数"] || item.ratingCount || null,
             category: item.category || item["大类BSR"] || item["大类目"] || item.mainCategory || null,
             subcategory: item.subcategory || item["小类BSR"] || item["小类目"] || item.subCategory || null,
+            material: item.material || item["材质"] || item["材料"] || null,
+            color: item.color || item.colour || item["颜色"] || null,
+            productSize: item.productSize || item.productDimensions || item["产品尺寸"] || item["商品尺寸"] || null,
+            productWeight: item.productWeight || item.itemWeight || item["产品重量"] || item["商品重量"] || null,
+            includedComponents: item.includedComponents || item.components || item["包装内容"] || item["包含组件"] || null,
             productParams: item.productParams || item["详细参数"] || item["产品参数信息"] || item["产品参数"] || item.params || null,
             packageSize: item.packageSize || item["包装尺寸"] || item["包装尺寸（单位换算）"] || item.dimensions || null,
             packageWeight: item.packageWeight || item["包装重量"] || item["包装重量（单位换算）"] || item.weight || null,
@@ -5496,14 +5574,60 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
         async getProductSpecs(asin, marketplace) {
           const item = await this._find(asin);
           const out = empty("specs", asin, marketplace);
-          if (!item) return out;
           const mock = this._mockEntry(asin);
-          out.found = true;
-          out.productParams = item.productParams || mock?.specs?.productParams || null;
-          out.packageSize = item.packageSize || mock?.specs?.packageSize || null;
-          out.packageWeight = item.packageWeight || mock?.specs?.packageWeight || null;
-          out.packageInfo = item.packageInfo || [out.packageSize, out.packageWeight].filter(Boolean).join("\n") || mock?.specs?.packageInfo || null;
-          out.variants = item.variants || mock?.specs?.variants || null;
+          const preferRicher = (base, next) => {
+            const a = String(base || "").trim();
+            const b = String(next || "").trim();
+            if (!a) return b || null;
+            if (!b) return a || null;
+            const aScore = /package|尺寸|重量|dimensions|weight|material|材质|规格/i.test(a) ? 2 : 0;
+            const bScore = /package|尺寸|重量|dimensions|weight|material|材质|规格/i.test(b) ? 2 : 0;
+            if (bScore > aScore) return b;
+            if (b.length > a.length * 1.15) return b;
+            return a;
+          };
+          if (item || mock) {
+            out.found = true;
+            out.material = item?.material || mock?.specs?.material || null;
+            out.color = item?.color || mock?.specs?.color || null;
+            out.productSize = item?.productSize || mock?.specs?.productSize || null;
+            out.productWeight = item?.productWeight || mock?.specs?.productWeight || null;
+            out.includedComponents = item?.includedComponents || mock?.specs?.includedComponents || null;
+            out.productParams = item?.productParams || mock?.specs?.productParams || null;
+            out.packageSize = item?.packageSize || mock?.specs?.packageSize || null;
+            out.packageWeight = item?.packageWeight || mock?.specs?.packageWeight || null;
+            out.packageInfo = item?.packageInfo || [out.packageSize, out.packageWeight].filter(Boolean).join("\n") || mock?.specs?.packageInfo || null;
+            out.variants = item?.variants || mock?.specs?.variants || null;
+          }
+          /* 若本地目录/市场调研表缺失关键规格，去亚马逊商品页抓真实产品参数和包装信息兜底 */
+          if (!out.productParams || !out.packageInfo || !out.packageSize || !out.packageWeight) {
+            try {
+              const res = await fetch("api/amazon/product-page?asin=" + encodeURIComponent(String(asin).toUpperCase()), {
+                method: "GET",
+                signal: AbortSignal.timeout(Math.max(8, Number((manager && manager.config && manager.config.general && manager.config.general.timeout) || 10) * 1000)),
+              });
+              if (res.ok) {
+                const page = await res.json();
+                if (page && page.found) {
+                  const params = page.productParams && typeof page.productParams === "object"
+                    ? Object.entries(page.productParams).map(([k, v]) => k + "：" + v).join("\n")
+                    : (page.productParams ? String(page.productParams) : "");
+                  const pkg = page.packageInfo && typeof page.packageInfo === "object"
+                    ? [page.packageInfo.packageSize, page.packageInfo.packageWeight].filter(Boolean).join("\n")
+                    : (page.packageInfo ? String(page.packageInfo) : "");
+                  if (params) out.productParams = preferRicher(out.productParams, params);
+                  const pagePackageSize = page.packageSize || (page.packageInfo && typeof page.packageInfo === "object" ? page.packageInfo.packageSize : "");
+                  const pagePackageWeight = page.packageWeight || (page.packageInfo && typeof page.packageInfo === "object" ? page.packageInfo.packageWeight : "");
+                  if (pagePackageSize) out.packageSize = preferRicher(out.packageSize, pagePackageSize);
+                  if (pagePackageWeight) out.packageWeight = preferRicher(out.packageWeight, pagePackageWeight);
+                  if (pkg || out.packageSize || out.packageWeight) {
+                    out.packageInfo = preferRicher(out.packageInfo, pkg || [out.packageSize, out.packageWeight].filter(Boolean).join("\n"));
+                  }
+                  if (!out.found && (out.productParams || out.packageInfo || out.packageSize || out.packageWeight)) out.found = true;
+                }
+              }
+            } catch (err) { /* 商品页抓取失败时保留已有真实字段 */ }
+          }
           return out;
         }
         async getSalesData(asin, marketplace) {
@@ -5536,9 +5660,13 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
         async getReviewsData(asin, marketplace) {
           const item = await this._find(asin);
           const out = empty("reviewsData", asin, marketplace);
-          const local = LOCAL_REVIEW_CATALOG[String(asin || "").toUpperCase()];
-          const mock = this._mockEntry(asin)?.reviewsData || null;
-          const src = item || local || mock || null;
+          const upper = String(asin || "").toUpperCase();
+          const local = LOCAL_REVIEW_CATALOG[upper] || null;
+          const mockEntry = this._mockEntry(upper)?.reviewsData || null;
+          const mock = mockEntry && String(mockEntry.asin || "").toUpperCase() === upper ? mockEntry : null;
+          const itemAsin = String(item && item.asin || "").toUpperCase();
+          const scopedItem = item && (!itemAsin || itemAsin === upper) ? item : null;
+          const src = scopedItem || local || mock || null;
           const lines = (v) => {
             if (v === null || v === undefined || v === "") return null;
             if (Array.isArray(v)) return v.map((x) => String(x)).filter(Boolean).join("\n") || null;
@@ -5562,7 +5690,7 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
           structuredSourceRows.forEach((row) => {
             mergeReviewOutput(out, normalizeReviewsPayload(asin, marketplace, row), false);
           });
-          const structuredRows = normalizeReviewRows(sourceReviewRows);
+          const structuredRows = normalizeReviewRows(sourceReviewRows, asin);
           if (structuredRows.length) {
             mergeReviewOutput(out, analyzeReviewsToFields(asin, structuredRows, "本地市场表原始评论"), false);
           }
@@ -5580,7 +5708,7 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
             structuredRows.forEach((row) => {
               mergeReviewOutput(out, normalizeReviewsPayload(asin, marketplace, row), false);
             });
-            const classified = analyzeReviewsToFields(asin, normalizeReviewRows(reviewRows), "本地评论文件");
+            const classified = analyzeReviewsToFields(asin, normalizeReviewRows(reviewRows, asin), "本地评论文件");
             mergeReviewOutput(out, classified, false);
             const structured = Array.isArray(reviewPayload.structured) ? reviewPayload.structured : [];
             structured.forEach((row) => {
@@ -5597,10 +5725,28 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
             try {
               const pageReviews = await this._loadAmazonPageReviews(asin);
               if (pageReviews.length) {
-                const classified = analyzeReviewsToFields(asin, normalizeReviewRows(pageReviews), "亚马逊商品页评论");
+              const classified = analyzeReviewsToFields(asin, normalizeReviewRows(pageReviews, asin), "亚马逊商品页评论");
                 mergeReviewOutput(out, classified, false);
               }
             } catch (err) { /* 商品页评论抓取失败时静默跳过 */ }
+          }
+          /* 亚马逊商品页五点描述兜底：卖点字段仍为空时抓取 feature bullets 原文，
+           * 翻译成中文后交给 summarizeSellingPointsToFive 精炼为 5 条。 */
+          if (!out.sellingPoints) {
+            try {
+              const res = await fetch("api/amazon/product-page?asin=" + encodeURIComponent(String(asin).toUpperCase()), {
+                method: "GET",
+                signal: AbortSignal.timeout(Math.max(8, Number((manager && manager.config && manager.config.general && manager.config.general.timeout) || 10) * 1000)),
+              });
+              if (res.ok) {
+                const page = await res.json();
+                const bullets = Array.isArray(page && page.sellingPoints) ? page.sellingPoints : [];
+                if (bullets.length) {
+                  out.sellingPoints = bullets.map((line) => translateToChineseText(String(line || ""))).filter(Boolean).join("\n");
+                  this.addLog && this.addLog(asin, "reviewsData", "亚马逊商品页卖点：抓取 " + bullets.length + " 条五点描述原文并翻译为中文", "info");
+                }
+              }
+            } catch (err) { /* 商品页卖点抓取失败时保留已有真实字段 */ }
           }
           out.found = !!(out.summary || out.sellingPoints || out.positiveReviews || out.negativeReviews ||
             out.improvementPoints || out.targetAudience || out.useScenarios || out.optimizationDirection ||
@@ -5812,7 +5958,7 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
             salesData: ["sales30d", "monthlySales", "monthlyTrend", "monthlySalesText", "bsrCategory", "bsrSubcategory", "salesTrend", "sales30dChartUrl", "monthlySalesChartUrl", "salesChartUrl"],
             keepaData: ["priceTrend", "bsrTrend", "buyBoxOwnership", "updatedAt", "keepaChartUrl"],
             reviewsData: ["summary", "sellingPoints", "positiveReviews", "negativeReviews", "improvementPoints", "targetAudience", "useScenarios", "optimizationDirection", "positiveKeywords", "negativeKeywords", "aiCommentScreenshot", "sentimentDistribution"],
-            specs: ["material", "productSize", "packageSize", "packageWeight", "variants", "variantCount", "productParams", "packageInfo", "variantChartUrl"],
+            specs: ["material", "color", "productSize", "productWeight", "includedComponents", "packageSize", "packageWeight", "variants", "variantCount", "productParams", "packageInfo", "variantChartUrl"],
           };
           return map[kind] || [];
         }
@@ -5887,6 +6033,7 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
           if (!incoming || typeof incoming !== "object") return target;
           const listFields = ["positiveKeywords", "negativeKeywords"];
           const lineTextFields = ["summary", "sellingPoints", "positiveReviews", "negativeReviews", "improvementPoints", "targetAudience", "useScenarios"];
+          const richerTextFields = ["productParams", "packageInfo", "productSize", "productWeight", "packageWeight", "material", "color", "includedComponents"];
           Object.keys(incoming).forEach((k) => {
             const v = incoming[k];
             if (this._isEmptyValue(v)) return;
@@ -5915,6 +6062,20 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
             }
             if (listFields.includes(k)) {
               target[k] = this._mergeItem(Array.isArray(target[k]) ? target[k] : [], Array.isArray(v) ? v : this._normalizeList(v), true);
+              return;
+            }
+            if (richerTextFields.includes(k)) {
+              if (this._isEmptyValue(target[k])) {
+                target[k] = v;
+                return;
+              }
+              const base = String(target[k] || "");
+              const next = String(v || "");
+              const baseLooksRicher = /package|重量|尺寸|dimensions|weight|material|材质|规格/i.test(base);
+              const nextLooksRicher = /package|重量|尺寸|dimensions|weight|material|材质|规格/i.test(next);
+              if ((next.length > base.length * 1.15 && next.length > 24) || (nextLooksRicher && !baseLooksRicher)) {
+                target[k] = v;
+              }
               return;
             }
             if (k === "rawReviews") {
@@ -5956,7 +6117,8 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
             if (Array.isArray(data.bsrTrend) && data.bsrTrend.length) fields.push("BSR趋势=" + data.bsrTrend.length + "个点");
             push("买盒占有率", data.buyBoxOwnership);
           } else if (kind === "specs") {
-            push("材质", data.material); push("产品尺寸", data.productSize);
+            push("材质", data.material); push("颜色", data.color); push("产品尺寸", data.productSize); push("产品重量", data.productWeight);
+            push("包装内容", data.includedComponents);
             push("包装尺寸", data.packageSize); push("包装重量", data.packageWeight);
             push("变体数", data.variantCount);
             if (Array.isArray(data.variants) && data.variants.length) fields.push("变体列表=" + data.variants.length + "个");
@@ -6388,6 +6550,10 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
         const toCm = (n) => formatMetricNumber(Number(n) * 2.54);
         const toKg = (n) => formatMetricNumber(Number(n) * 0.45359237);
         const toKgFromG = (n) => formatMetricNumber(Number(n) / 1000);
+        text = text.replace(/(\d+(?:\.\d+)?)\s*["”]\s*D\s*x\s*(\d+(?:\.\d+)?)\s*["”]\s*W\s*x\s*(\d+(?:\.\d+)?)\s*["”]\s*H/gi,
+          (_, a, b, c) => "深" + toCm(a) + "厘米 x 宽" + toCm(b) + "厘米 x 高" + toCm(c) + "厘米");
+        text = text.replace(/(\d+(?:\.\d+)?)\s*["”]\s*L\s*x\s*(\d+(?:\.\d+)?)\s*["”]\s*W\s*x\s*(\d+(?:\.\d+)?)\s*["”]\s*H/gi,
+          (_, a, b, c) => "长" + toCm(a) + "厘米 x 宽" + toCm(b) + "厘米 x 高" + toCm(c) + "厘米");
         text = text.replace(/长\s*(\d+(?:\.\d+)?)\s*(?:英寸|inches?|inch|")\s*x\s*宽\s*(\d+(?:\.\d+)?)\s*(?:英寸|inches?|inch|")\s*x\s*高\s*(\d+(?:\.\d+)?)\s*(?:英寸|inches?|inch|")/gi,
           (_, a, b, c) => "长" + toCm(a) + "厘米 x 宽" + toCm(b) + "厘米 x 高" + toCm(c) + "厘米");
         text = text.replace(/(\d+(?:\.\d+)?)\s*(?:英寸|inches?|inch|")?\s*x\s*(\d+(?:\.\d+)?)\s*(?:英寸|inches?|inch|")?\s*x\s*(\d+(?:\.\d+)?)\s*(?:英寸|inches?|inch|")/gi,
@@ -6406,6 +6572,76 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
         text = text.replace(/(^|\n)\s*(?:brand|品牌|商品品牌)\s*[:：]\s*.*?(?=(?:\n|color|colour|material|maximum\s+weight\s+recommendation|handle\s+type|product\s+dimensions|item\s+weight|package\s+weight|included\s+components|颜色|材质|最大|手柄|产品尺寸|包装|包含组件)\s*[:：]|$)/gi, "$1");
         return text.split(/\n+/).map((line) => line.trim()).filter((line) => line && !/^(?:brand|品牌|商品品牌)\s*[:：]/i.test(line)).join("\n");
       }
+      function decodeHtmlEntities(value) {
+        return normalizeTextValue(value)
+          .replace(/&amp;/g, "&")
+          .replace(/&quot;|&#34;|&#x22;/gi, '"')
+          .replace(/&#39;|&apos;|&#x27;/gi, "'")
+          .replace(/&nbsp;/g, " ")
+          .replace(/&lt;/g, "<")
+          .replace(/&gt;/g, ">");
+      }
+      function productParamEntriesFromValue(value) {
+        const rows = [];
+        const push = (key, val) => {
+          const k = decodeHtmlEntities(key).replace(/[:：]\s*$/, "").trim();
+          const v = decodeHtmlEntities(val).trim();
+          if (k && v) rows.push([k, v]);
+        };
+        const visit = (node) => {
+          if (node === null || node === undefined || node === "") return;
+          if (Array.isArray(node)) {
+            node.forEach(visit);
+            return;
+          }
+          if (typeof node === "object") {
+            if (node.productParams !== undefined) visit(node.productParams);
+            ["material", "productSize", "productWeight", "itemWeight", "color", "includedComponents", "components"].forEach((key) => {
+              if (node[key] !== undefined) push(key, node[key]);
+            });
+            Object.entries(node).forEach(([key, val]) => {
+              if (["productParams", "packageInfo", "packageSize", "packageWeight", "variants", "variantCount"].includes(key)) return;
+              if (val !== null && val !== undefined && typeof val !== "object") push(key, val);
+            });
+            return;
+          }
+          let text = decodeHtmlEntities(node).replace(/\r\n?/g, "\n").replace(/\s*\|\s*/g, "\n").trim();
+          if (!text) return;
+          if (/^[\[{]/.test(text)) {
+            try {
+              visit(JSON.parse(text));
+              return;
+            } catch (err) {}
+          }
+          text.split(/\n+/).forEach((line) => {
+            const item = line.trim();
+            if (!item) return;
+            let m = item.match(/^([^:：]{1,80})[:：]\s*(.+)$/);
+            if (!m) m = item.match(/^(材料|材质|颜色|产品尺寸|商品尺寸|产品重量|商品重量|最大建议承重|包含组件|包装内容|Material(?:\s+Type)?|Color|Colour|Product Dimensions|Item Dimensions(?: [A-Z x]+)?|Item Weight|Maximum Weight Recommendation|Included Components)\s+(.+)$/i);
+            if (m) push(m[1], m[2]);
+          });
+        };
+        visit(value);
+        return rows;
+      }
+      function productParamLabel(key) {
+        const text = decodeHtmlEntities(key).toLowerCase().replace(/\s+/g, " ").trim();
+        if (/package|shipping|best sellers rank|asin|brand|manufacturer|model|part number|unit count|number of items|number of packs|item type|recommended uses|mounting type|power source|theme|shape|style|finish|room type|care instructions|age range/.test(text)) return "";
+        if (/颜色|color|colour/.test(text)) return "颜色";
+        if (/材质|material|frame material|material type|top material|base material|handle material/.test(text)) return "材质";
+        if (/产品尺寸|商品尺寸|product dimensions|item dimensions|dimensions/.test(text)) return "产品尺寸";
+        if (/产品重量|商品重量|item weight|product weight/.test(text)) return "产品重量";
+        if (/最大|承重|maximum weight|weight recommendation|load bearing|capacity/.test(text)) return "最大建议承重";
+        if (/包含|组件|包装内容|included components|components|package contents/.test(text)) return "包装内容";
+        return "";
+      }
+      function formatProductParamValue(label, value) {
+        let text = translateToChineseText(value);
+        if (label === "包装内容") {
+          text = text.replace(/\bAssembly Guide\b/gi, "组装说明").replace(/\bInstallation Tool\b/gi, "安装工具");
+        }
+        return normalizeEnglishPeriod(convertMeasurementsToMetric(text));
+      }
       function normalizeEnglishPeriod(value) {
         return normalizeTextValue(value)
           .replace(/。/g, ".")
@@ -6415,7 +6651,24 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
           .trim();
       }
       function formatProductParamsDisplay(value) {
-        return normalizeEnglishPeriod(convertMeasurementsToMetric(translateToChineseText(removeBrandFromProductParams(value))));
+        const picked = new Map();
+        productParamEntriesFromValue(value).forEach(([key, val]) => {
+          const label = productParamLabel(key);
+          if (!label) return;
+          const formatted = formatProductParamValue(label, val);
+          if (!formatted) return;
+          const old = picked.get(label) || "";
+          if (!old || formatted.length > old.length) picked.set(label, formatted);
+        });
+        if (!picked.size) {
+          const fallback = normalizeEnglishPeriod(convertMeasurementsToMetric(translateToChineseText(removeBrandFromProductParams(value))));
+          return fallback.split(/\n+/).filter((line) => productParamLabel(line.split(/[：:]/)[0])).slice(0, 6).join("\n");
+        }
+        const order = ["产品尺寸", "材质", "颜色", "产品重量", "最大建议承重", "包装内容"];
+        return order
+          .filter((label) => picked.has(label))
+          .map((label) => label + "：" + picked.get(label))
+          .join("\n");
       }
       function formatPackageInfoDisplay(value) {
         return normalizeEnglishPeriod(convertMeasurementsToMetric(translateToChineseText(value)));
@@ -6423,14 +6676,18 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
       function translateToChineseText(value) {
         let text = normalizeTextValue(value);
         if (!text) return "";
+        text = decodeHtmlEntities(text);
         text = text.replace(/\r\n?/g, "\n").replace(/(\d+)\.\s+(\d+)/g, "$1.$2").replace(/\s*\|\s*/g, "\n").replace(/\s*--\s*/g, "：");
         const pairs = [
           ["Brand:", "品牌："], ["Brand：", "品牌："], ["Color:", "颜色："], ["Colour:", "颜色："],
           ["Material:", "材质："], ["Handle Type:", "手柄类型："], ["Product Dimensions:", "产品尺寸："],
+          ["Item Dimensions D x W x H", "产品尺寸（深 x 宽 x 高）"], ["Item Dimensions L x W x H", "产品尺寸（长 x 宽 x 高）"], ["Item Dimensions", "产品尺寸"],
           ["Maximum Weight Recommendation:", "最大建议承重："], ["Maximum Weight Recommendation", "最大建议承重"],
           ["Item Package Dimensions L x W x H", "包装尺寸（长 x 宽 x 高）"], ["Package Dimensions", "包装尺寸"],
           ["Item Weight", "产品重量"], ["Package Weight", "包装重量"], ["Included Components", "包含组件"],
-          ["Black", "黑色"], ["Blue", "蓝色"], ["Red", "红色"], ["Green", "绿色"], ["Gray", "灰色"],
+          ["Material Type", "材质"], ["Frame Material Type", "框架材质"], ["Top Material Type", "台面材质"],
+          ["Black", "黑色"], ["Blue", "蓝色"], ["Red", "红色"], ["Green", "绿色"], ["Gray", "灰色"], ["White", "白色"],
+          ["Glass", "玻璃"], ["Metal", "金属"], ["Engineered Wood", "工程木"], ["Wood", "木材"], ["Fabric", "布料"], ["Plastic", "塑料"],
           ["Polypropylene (PP)", "聚丙烯（PP）"], ["Polypropylene", "聚丙烯"], ["Acrylonitrile Butadiene Styrene", "ABS塑料"],
           ["ABS Plastic", "ABS塑料"], ["Alloy Steel", "合金钢"], ["PVC", "聚氯乙烯（PVC）"], ["Polyethylene", "聚乙烯"], ["Fixed", "固定式"], ["Rotating", "旋转式"],
           ["Powerful Upper Body", "上肢力量训练"], ["Sturdy & Slip-Resistant", "稳固防滑"], ["Slip-Resistant", "防滑"],
@@ -6466,7 +6723,9 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
         text = convertMeasurementsToMetric(text);
         text = text
           .replace(/\bL\s*x\s*W\s*x\s*H\b/gi, "长 x 宽 x 高")
+          .replace(/\bD\s*x\s*W\s*x\s*H\b/gi, "深 x 宽 x 高")
           .replace(/(\d+(?:\.\d+)?)\s*["”]\s*L/gi, "长$1英寸")
+          .replace(/(\d+(?:\.\d+)?)\s*["”]\s*D/gi, "深$1英寸")
           .replace(/(\d+(?:\.\d+)?)\s*["”]\s*W/gi, "宽$1英寸")
           .replace(/(\d+(?:\.\d+)?)\s*["”]\s*H/gi, "高$1英寸");
         text = convertMeasurementsToMetric(text)
@@ -6571,18 +6830,25 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
         obj["评分"] = b.rating !== null && b.rating !== undefined ? String(b.rating) : "";
         obj["评论数"] = b.reviewCount !== null && b.reviewCount !== undefined ? fmt(b.reviewCount) : "";
         obj["变体"] = sp.variants ? (Array.isArray(sp.variants) ? sp.variants.join("；") : String(sp.variants)) : "";
-        obj["产品参数信息"] = formatProductParamsDisplay(sp.productParams || "");
-        obj["包装尺寸及重量"] = formatPackageInfoDisplay(sp.packageInfo || "");
+        obj["产品参数信息"] = formatProductParamsDisplay({
+          productParams: sp.productParams || "",
+          material: sp.material,
+          productSize: sp.productSize,
+          productWeight: sp.productWeight || sp.itemWeight,
+          color: sp.color,
+          includedComponents: sp.includedComponents,
+        });
+        obj["包装尺寸及重量"] = formatPackageInfoDisplay(sp.packageInfo || [sp.packageSize, sp.packageWeight].filter(Boolean).join("\n"));
         obj["30天销量(畅销变体)"] = s.sales30d !== null && s.sales30d !== undefined ? String(s.sales30d) : "";
         obj["历史月销"] = formatMonthlySalesDisplay(s.monthlySalesText || s.monthlySales);
         obj["Keepa趋势"] = k.priceTrend && k.priceTrend.length ? "价格/BSR 趋势数据" : "";
         obj["AI评论分析"] = translateToChineseText(r.summary || "");
         obj["产品卖点"] = summarizeSellingPointsToFive(r.sellingPoints || "");
-        obj["好评点"] = translateToChineseText(r.positiveReviews || "");
-        obj["差评点"] = translateToChineseText(r.negativeReviews || "");
-        obj["待改善点"] = translateToChineseText(r.improvementPoints || "");
-        obj["使用人群"] = translateToChineseText(r.targetAudience || "");
-        obj["使用场景"] = translateToChineseText(r.useScenarios || "");
+        obj["好评点"] = capReviewPointsToFive(r.positiveReviews);
+        obj["差评点"] = capReviewPointsToFive(r.negativeReviews);
+        obj["待改善点"] = capReviewPointsToFive(r.improvementPoints);
+        obj["使用人群"] = capReviewPointsToFive(r.targetAudience);
+        obj["使用场景"] = capReviewPointsToFive(r.useScenarios);
         obj["优化方向"] = translateToChineseText(formatOptimizationSummary(r.optimizationDirection) || formatOptimizationDirection(r.optimizationDirection));
         return obj;
       }
@@ -6918,7 +7184,21 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
         const el = document.getElementById("col-card-" + column.index);
         if (!el) return;
         const p = column.product;
-        if (!p || !p.done) {
+        if (!p) {
+          el.innerHTML =
+            '<div class="card-section empty-card"><div class="card-section-head blue">基础商品信息</div><div class="card-section-body">' +
+            '<div class="empty-column-state">输入本列 ASIN 后点击查询，系统会按已配置数据源自动拉取并补齐该竞品数据。</div>' +
+            '</div></div>' +
+            '<div class="card-section empty-card"><div class="card-section-head gray">销量趋势数据</div><div class="card-section-body">' +
+            '<div class="empty-column-state muted">暂无数据</div>' +
+            '</div></div>' +
+            '<div class="card-section empty-card"><div class="card-section-head red">AI文本分析</div><div class="card-section-body">' +
+            '<div class="empty-column-state muted">暂无评论分析</div>' +
+            '</div></div>';
+          return;
+        }
+
+        if (p.loading || !p.done) {
           el.innerHTML =
             '<div class="card-section"><div class="card-section-head blue">基础商品信息</div><div class="card-section-body">' +
             '<div class="skeleton"><span class="sk img"></span><span class="sk w60"></span><span class="sk w80"></span></div>' +
@@ -7046,10 +7326,33 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
       }
 
       const MANUAL_EDIT_KEY = "amz_manual_edits_v1";
+      function normalizeManualEditRecord(record, expectedAsin) {
+        if (!record || typeof record !== "object") return null;
+        const out = Object.assign({}, record);
+        const keyAsin = String(expectedAsin || "").trim().toUpperCase();
+        const recordAsin = String(out.ASIN || out.asin || "").trim().toUpperCase();
+        if (keyAsin && recordAsin && recordAsin !== keyAsin) return null;
+        if (keyAsin && !recordAsin && !/^col-\d+$/i.test(keyAsin)) out.ASIN = keyAsin;
+        return out;
+      }
       function loadManualEdits() {
         try {
           const raw = localStorage.getItem(MANUAL_EDIT_KEY);
-          return raw ? JSON.parse(raw) : {};
+          const parsed = raw ? JSON.parse(raw) : {};
+          if (!parsed || typeof parsed !== "object") return {};
+          const out = {};
+          let changed = false;
+          Object.entries(parsed).forEach(([key, value]) => {
+            const cleaned = normalizeManualEditRecord(value, key);
+            if (!cleaned) return;
+            const normalizedKey = String(cleaned.ASIN || key || "").trim().toUpperCase() || key;
+            if (normalizedKey !== key || cleaned !== value) changed = true;
+            out[normalizedKey] = cleaned;
+          });
+          if (changed || Object.keys(out).length !== Object.keys(parsed).length) {
+            try { localStorage.setItem(MANUAL_EDIT_KEY, JSON.stringify(out)); } catch (err) { console.warn("人工修改缓存清理失败", err); }
+          }
+          return out;
         } catch (err) { return {}; }
       }
       function saveManualEdits(map) {
@@ -7059,7 +7362,7 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
         const map = loadManualEdits();
         const col = columns[index];
         const key = col ? (col.asin || ("col-" + index)) : ("col-" + index);
-        return map[key] || null;
+        return normalizeManualEditRecord(map[key], col ? col.asin : key);
       }
 
       function productToEditFields(column) {
@@ -7175,6 +7478,7 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
         const previousKey = column.asin || ("col-" + index);
         const asin = String(fields["ASIN"] || column.asin || "").trim().toUpperCase();
         column.asin = asin;
+        fields["ASIN"] = asin;
         const input = document.getElementById("col-input-" + index);
         if (input) input.value = asin;
         applyManualEditToProduct(column, fields);
@@ -7193,11 +7497,13 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
       let reviewImportColumnIndex = null;
       let reviewImportCachedText = "";
       let reviewImportCachedRows = null;
+      let reviewImportCachedStructured = null;
       let reviewImportPreviewTimer = null;
       let reviewImportDragDepth = 0;
       function clearReviewImportCache() {
         reviewImportCachedText = "";
         reviewImportCachedRows = null;
+        reviewImportCachedStructured = null;
         if (reviewImportPreviewTimer) {
           clearTimeout(reviewImportPreviewTimer);
           reviewImportPreviewTimer = null;
@@ -7221,6 +7527,7 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
         if (!ta || !meta) return;
         const text = String(ta.value || "");
         const trimmed = text.trim();
+        const asin = getReviewImportAsin(column);
         if (!trimmed) {
           clearReviewImportCache();
           meta.textContent = "当前列：" + (column ? ("竞品 " + COLUMN_KEYS[column.index]) : "--") + "。支持拖拽文件、直接粘贴或手动输入评论文本，系统会自动识别后再分类，不设 1000 条上限。";
@@ -7228,7 +7535,7 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
         }
         const rows = reviewImportCachedText === text && Array.isArray(reviewImportCachedRows)
           ? reviewImportCachedRows.slice()
-          : parseReviewTextToRows(trimmed);
+          : parseReviewTextToRows(trimmed, asin);
         reviewImportCachedText = text;
         reviewImportCachedRows = rows.slice();
         const parts = [
@@ -7251,25 +7558,104 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
         if (fill) fill.style.width = Math.max(0, Math.min(100, Number(pct) || 0)) + "%";
         if (label && text) label.textContent = text;
       }
+      function getReviewImportAsin(column) {
+        const col = column || columns[reviewImportColumnIndex];
+        const input = col ? document.getElementById("col-input-" + col.index) : null;
+        return String((input && input.value) || (col && col.asin) || "").trim().toUpperCase();
+      }
+      function isReviewSpreadsheetFile(file) {
+        return /\.(xlsx|xlsm|csv|json|jsonl|txt)$/i.test(file && file.name || "");
+      }
+      function reviewRowsPreviewText(rows, total, fileName) {
+        const list = Array.isArray(rows) ? rows : [];
+        if (!list.length) return "文件已读取，但未识别到可用于分析的评论正文。";
+        const max = Math.min(list.length, 120);
+        const lines = list.slice(0, max).map((row, idx) => {
+          const rating = row.rating !== null && row.rating !== undefined && row.rating !== "" ? String(row.rating) + "星：" : "";
+          const title = row.title ? String(row.title).trim() + " - " : "";
+          const content = String(row.content || row.text || "").trim();
+          return (idx + 1) + ". " + rating + title + content;
+        });
+        if (list.length > max) {
+          lines.push("……已解析 " + formatReviewImportCount(total || list.length) + " 条评论，文本框只展示前 " + max + " 条预览，完整数据已缓存，可直接点击自动分类并写入。");
+        }
+        if (fileName) lines.unshift("文件：" + fileName);
+        return lines.join("\n\n");
+      }
+      async function uploadReviewFileToLocalParser(file, asin) {
+        const form = new FormData();
+        form.append("file", file, file.name || "reviews-upload");
+        const url = "api/local/reviews/upload?asin=" + encodeURIComponent(asin || "");
+        const res = await fetch(url, { method: "POST", body: form });
+        let payload = null;
+        try { payload = await res.json(); } catch (err) { payload = null; }
+        if (!res.ok) throw new Error((payload && payload.error) || ("本地评论解析接口 HTTP " + res.status));
+        return payload || {};
+      }
       async function loadReviewImportFile(file, columnLabel) {
         if (!file) return;
-        const text = await file.text();
+        const column = columns[reviewImportColumnIndex];
+        const asin = getReviewImportAsin(column);
         const ta = document.getElementById("reviewImportText");
+        const meta = document.getElementById("reviewImportMeta");
+        setReviewImportProgress(true, "正在解析评论文件...", 20);
+        if (isReviewSpreadsheetFile(file) && location.protocol !== "file:") {
+          try {
+            const payload = await uploadReviewFileToLocalParser(file, asin);
+            const rawRows = Array.isArray(payload.reviews) ? payload.reviews : (Array.isArray(payload.rows) ? payload.rows : (Array.isArray(payload.items) ? payload.items : []));
+            const rows = normalizeReviewRows(rawRows, asin);
+            const structured = rawRows.filter((row) => row && typeof row === "object" && (
+              row.summary || row.sellingPoints || row.positiveReviews || row.negativeReviews ||
+              row.improvementPoints || row.targetAudience || row.useScenarios || row.optimizationDirection
+            ));
+            const text = reviewRowsPreviewText(rows, rows.length, file.name);
+            if (ta) ta.value = text;
+            reviewImportCachedText = String(text || "");
+            reviewImportCachedRows = rows.slice();
+            reviewImportCachedStructured = structured.slice();
+            const matched = Array.isArray(payload.matchedFiles) ? payload.matchedFiles.length : 0;
+            const searched = payload.searchedFiles || 0;
+            const fileInfo = payload.uploadedFile || file.name;
+            if (meta) meta.textContent = "当前列：" + (columnLabel || "--") + "；ASIN：" + (asin || "未填写") + "。已通过本地解析接口识别 " + formatReviewImportCount(rows.length) + " 条评论候选" +
+              (structured.length ? "，并识别 " + structured.length + " 条结构化分析字段" : "") +
+              "。扫描 " + searched + " 个文件，命中 " + matched + " 个，来源：" + fileInfo + "。";
+            setReviewImportProgress(false, "正在分析评论...", 0);
+            showToast("评论文件已解析：" + file.name);
+            return;
+          } catch (err) {
+            const isExcel = /\.(xlsx|xlsm)$/i.test(file.name || "");
+            if (isExcel) {
+              setReviewImportProgress(false, "正在分析评论...", 0);
+              if (ta) ta.value = "";
+              clearReviewImportCache();
+              if (meta) meta.textContent = "当前列：" + (columnLabel || "--") + "。Excel 解析失败：" + (err.message || err) + "。请确认使用本地服务打开页面，并检查表格是否包含评论正文/评分/ASIN字段。";
+              showToast("Excel评论文件解析失败");
+              return;
+            }
+            console.warn("本地解析接口失败，尝试按文本读取", err);
+          }
+        }
+        const text = await file.text();
         if (ta) ta.value = text;
-        const rows = parseReviewTextToRows(text);
+        const rows = parseReviewTextToRows(text, asin);
         reviewImportCachedText = String(text || "");
         reviewImportCachedRows = rows.slice();
+        reviewImportCachedStructured = null;
         scheduleReviewImportPreview("文件：" + file.name);
-        const meta = document.getElementById("reviewImportMeta");
-        if (meta) meta.textContent = "当前列：" + (columnLabel || "--") + "。已载入 " + rows.length + " 条评论候选，可直接自动分类。";
+        if (meta) meta.textContent = "当前列：" + (columnLabel || "--") + "。已载入 " + formatReviewImportCount(rows.length) + " 条评论候选，可直接自动分类。";
+        setReviewImportProgress(false, "正在分析评论...", 0);
         showToast("评论文件已载入：" + file.name);
       }
       function ensureColumnProduct(column) {
-        if (!column.product) {
-          const asin = column.asin || "";
+        const site = manager.config.general.site || "US";
+        const input = column ? document.getElementById("col-input-" + column.index) : null;
+        const asin = String((input && input.value) || (column && column.asin) || (column && column.product && column.product.asin) || "").trim().toUpperCase();
+        if (column) column.asin = asin;
+        const productAsin = String(column && column.product && column.product.asin || "").trim().toUpperCase();
+        if (!column.product || (asin && productAsin && productAsin !== asin)) {
           column.product = {
             asin,
-            marketplace: manager.config.general.site || "US",
+            marketplace: site,
             matched: !!asin,
             done: true,
             loading: false,
@@ -7279,14 +7665,22 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
           };
         }
         const p = column.product;
+        p.asin = asin || p.asin || "";
+        p.marketplace = site;
         p.done = true;
         p.error = false;
         p.data = p.data || {};
-        p.data.basicInfo = p.data.basicInfo || empty("basicInfo", p.asin || column.asin, manager.config.general.site || "US");
-        p.data.salesData = p.data.salesData || empty("salesData", p.asin || column.asin, manager.config.general.site || "US");
-        p.data.keepaData = p.data.keepaData || empty("keepaData", p.asin || column.asin, manager.config.general.site || "US");
-        p.data.specs = p.data.specs || empty("specs", p.asin || column.asin, manager.config.general.site || "US");
-        p.data.reviewsData = p.data.reviewsData || empty("reviewsData", p.asin || column.asin, manager.config.general.site || "US");
+        const ensureScoped = (kind) => {
+          const current = p.data[kind];
+          const currentAsin = String(current && current.asin || "").trim().toUpperCase();
+          if (!current || (p.asin && currentAsin && currentAsin !== p.asin)) {
+            p.data[kind] = empty(kind, p.asin, site);
+          } else {
+            p.data[kind].asin = p.asin;
+            p.data[kind].marketplace = site;
+          }
+        };
+        ["basicInfo", "salesData", "keepaData", "specs", "reviewsData"].forEach(ensureScoped);
         return p;
       }
       function openReviewImport(index) {
@@ -7318,30 +7712,41 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
         if (!column) return;
         try {
           const text = document.getElementById("reviewImportText").value;
+          const input = document.getElementById("col-input-" + index);
+          const asin = String((input && input.value) || column.asin || "").trim().toUpperCase();
+          if (!asin) {
+            showToast("请先填写本列 ASIN，再导入评论");
+            return;
+          }
           const reviews = reviewImportCachedText === String(text || "") && Array.isArray(reviewImportCachedRows)
-            ? reviewImportCachedRows.slice()
-            : parseReviewTextToRows(text);
+            ? normalizeReviewRows(reviewImportCachedRows.slice(), asin)
+            : parseReviewTextToRows(text, asin);
           reviewImportCachedText = String(text || "");
           reviewImportCachedRows = reviews.slice();
-          if (!reviews.length) {
+          const structuredPayloads = Array.isArray(reviewImportCachedStructured) ? reviewImportCachedStructured.slice() : [];
+          if (!reviews.length && !structuredPayloads.length) {
             showToast("请先粘贴原始评论文本");
             return;
           }
-          const input = document.getElementById("col-input-" + index);
-          const asin = String((input && input.value) || column.asin || "").trim().toUpperCase();
           column.asin = asin;
           if (input) input.value = asin;
           const p = ensureColumnProduct(column);
-          p.asin = asin || p.asin;
+          p.asin = asin;
           p.matched = true;
           p.source = (p.source || "本地数据源") + " · 人工导入评论";
+          p.data.reviewsData = empty("reviewsData", asin, manager.config.general.site || "US");
           setReviewImportProgress(true, "正在分析 0/" + reviews.length + " 条评论...", 0);
-          const classified = reviews.length >= 300
-            ? await analyzeReviewsToFieldsAsync(p.asin || asin, reviews, "人工导入评论文本", (done, total) => {
-              setReviewImportProgress(true, "正在分析 " + done + "/" + total + " 条评论...", total ? (done * 100 / total) : 0);
-            })
-            : analyzeReviewsToFields(p.asin || asin, reviews, "人工导入评论文本");
-          mergeReviewOutput(p.data.reviewsData, classified, true);
+          if (reviews.length) {
+            const classified = reviews.length >= 300
+              ? await analyzeReviewsToFieldsAsync(asin, reviews, "人工导入评论文本", (done, total) => {
+                setReviewImportProgress(true, "正在分析 " + done + "/" + total + " 条评论...", total ? (done * 100 / total) : 0);
+              })
+              : analyzeReviewsToFields(asin, reviews, "人工导入评论文本");
+            mergeReviewOutput(p.data.reviewsData, classified, true);
+          }
+          structuredPayloads.forEach((row) => {
+            mergeReviewOutput(p.data.reviewsData, normalizeReviewsPayload(asin, manager.config.general.site || "US", row), false);
+          });
           setColumnOptimizationDirection(column);
           const fields = productToEditFields(column);
           const map = loadManualEdits();
@@ -7779,7 +8184,7 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
         try {
           const cached = localStorage.getItem(key);
           if (cached) return cached;
-          const res = await fetch(url);
+          const res = await fetch(proxiedImageUrl(url));
           if (!res.ok) throw new Error("HTTP " + res.status);
           const blob = await res.blob();
           const dataUrl = await new Promise((resolve, reject) => {
@@ -7939,7 +8344,7 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
         const column = columns[reviewImportColumnIndex];
         const picker = document.createElement("input");
         picker.type = "file";
-        picker.accept = ".txt,.csv,.json,.jsonl,text/plain,text/csv,application/json";
+        picker.accept = ".xlsx,.xlsm,.csv,.json,.jsonl,.txt,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/plain,text/csv,application/json";
         picker.onchange = async () => {
           try {
             if (picker.files && picker.files[0]) {
@@ -8170,7 +8575,11 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
           applyConfigToForm();
           initSourceSelect();
           updateSourceStatus("已加载分享配置");
-          DEFAULT_ASINS.forEach((asin, i) => queryColumn(i));
+          columns.forEach((column, i) => {
+            const currentInput = document.getElementById("col-input-" + i);
+            const currentAsin = String((currentInput && currentInput.value) || column.asin || "").trim();
+            if (currentAsin) queryColumn(i);
+          });
         }
         return ok;
       }
@@ -8392,7 +8801,10 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
           saveConfig(manager.config);
           closeConfig();
           showToast("配置已保存");
-          DEFAULT_ASINS.forEach((asin, i) => queryColumn(i));
+          columns.forEach((column, i) => {
+            const input = document.getElementById("col-input-" + i);
+            if (String((input && input.value) || column.asin || "").trim()) queryColumn(i);
+          });
         });
         window.addEventListener("keepa-quota-update", (e) => {
           document.getElementById("keepaQuota").textContent = e.detail ?? "--";
@@ -8408,7 +8820,10 @@ const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
         manager.config.providerOrder = nextOrder.join(",");
         saveConfig(manager.config);
         showToast("已切换数据源：" + (manager.listProviders().find((p) => p.id === manager.activeMain)?.name || manager.activeMain));
-        DEFAULT_ASINS.forEach((asin, i) => queryColumn(i));
+        columns.forEach((column, i) => {
+          const input = document.getElementById("col-input-" + i);
+          if (String((input && input.value) || column.asin || "").trim()) queryColumn(i);
+        });
       });
       document.getElementById("configModal").addEventListener("click", (e) => {
         if (e.target.id === "configModal") closeConfig();

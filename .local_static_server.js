@@ -138,10 +138,13 @@ const LINGXING_MCP_URL = "https://openmcp.lingxing.com/mcp-servers/lingxing-mcp"
 let LINGXING_MCP_KEY = process.env.LINGXING_MCP_KEY || "";
 
 function readSorftimeUrl() {
-  const raw = fs.readFileSync(codexConfigPath, "utf8");
-  const match = raw.match(/^\[mcp_servers\."Sorftime-MCP"\][\s\S]*?^url\s*=\s*"([^"]+)"/m);
-  if (!match) throw new Error("Sorftime-MCP config was not found");
-  return match[1];
+  /* 优先读 config.toml；找不到时回退到内置官方地址（Key 由 SORFTIME_MCP_AUTH 环境变量提供） */
+  try {
+    const raw = fs.readFileSync(codexConfigPath, "utf8");
+    const match = raw.match(/^\[mcp_servers\."Sorftime-MCP"\][\s\S]*?^url\s*=\s*"([^"]+)"/m);
+    if (match) return match[1];
+  } catch (err) { /* 读取失败时走内置地址 */ }
+  return "https://mcp.sorftime.com";
 }
 
 async function proxyXiyouMcp(req, res) {
@@ -272,12 +275,16 @@ function pythonCandidates() {
 function runPythonJson(script, payload) {
   let lastError = "";
   for (const exe of pythonCandidates()) {
-    const res = spawnSync(exe, ["-c", script], {
-      input: JSON.stringify(payload),
+    const env = Object.assign({}, process.env, {
+      PYTHONIOENCODING: "utf-8",
+      LOCAL_SCAN_PAYLOAD: JSON.stringify(payload),
+    });
+    const res = spawnSync(exe, ["-"], {
+      input: script,
       encoding: "utf8",
       timeout: 45000,
       maxBuffer: 40 * 1024 * 1024,
-      env: Object.assign({}, process.env, { PYTHONIOENCODING: "utf-8" }),
+      env,
     });
     if (!res.error && res.status === 0) return JSON.parse(res.stdout || "{}");
     lastError = (res.error && res.error.message) || res.stderr || ("exit " + res.status);
@@ -288,7 +295,7 @@ function runPythonJson(script, payload) {
 const LOCAL_SCAN_SCRIPT = String.raw`
 import sys, os, json, csv, re, datetime
 
-payload = json.loads(sys.stdin.read() or "{}")
+payload = json.loads(os.environ.get("LOCAL_SCAN_PAYLOAD") or sys.stdin.read() or "{}")
 ROOT = os.path.abspath(payload.get("root") or ".")
 MODE = payload.get("mode") or "market"
 NEEDLE = (payload.get("asin") or "").strip().upper()
@@ -301,7 +308,7 @@ except Exception:
     load_workbook = None
 
 SKIP_DIRS = {".git", "node_modules", ".chrome-check", "__pycache__", ".venv", "venv", "AppData"}
-TEXT_EXTS = {".txt", ".csv", ".json"}
+TEXT_EXTS = {".txt", ".csv", ".json", ".jsonl"}
 EXCEL_EXTS = {".xlsx", ".xlsm"}
 
 def inside_root(p):
@@ -312,7 +319,7 @@ def norm_label(value):
     if value is None:
         return ""
     text = str(value).strip().lower()
-    return re.sub(r"[\s\r\n\t:：,，、/\\()（）\\[\\]【】\\-_%]+", "", text)
+    return re.sub(r"[\s\r\n\t:：,，、。.;；/\\()（）\\[\\]【】{}<>《》'\"·|\\-_%]+", "", text)
 
 ALIASES = {
     "asin": "asin",
@@ -360,6 +367,24 @@ ALIASES = {
     "变体": "variants",
     "变体数": "variantCount",
     "变体数量": "variantCount",
+    "材质": "material",
+    "材料": "material",
+    "material": "material",
+    "颜色": "color",
+    "色彩": "color",
+    "color": "color",
+    "colour": "color",
+    "产品尺寸": "productSize",
+    "商品尺寸": "productSize",
+    "productdimensions": "productSize",
+    "itemdimensions": "productSize",
+    "产品重量": "productWeight",
+    "商品重量": "productWeight",
+    "itemweight": "productWeight",
+    "productweight": "productWeight",
+    "包装内容": "includedComponents",
+    "包含组件": "includedComponents",
+    "includedcomponents": "includedComponents",
     "详细参数": "productParams",
     "产品参数信息": "productParams",
     "包装尺寸及重量": "packageInfo",
@@ -392,8 +417,12 @@ REVIEW_ALIASES = {
     "标题": "title",
     "reviewtitle": "title",
     "评论标题": "title",
+    "评价标题": "title",
     "评论内容": "content",
+    "评价内容": "content",
     "评论正文": "content",
+    "内容": "content",
+    "正文": "content",
     "reviewcontent": "content",
     "content": "content",
     "comment": "content",
@@ -427,6 +456,80 @@ REVIEW_ALIASES = {
     "reviewdate": "date",
 }
 
+# 追加常见市场调研 / 竞品分析 / 评论明细表头映射，保持后续本地数据源可插拔。
+# 这些别名不覆盖真实接口返回值，只用于把本地文件字段准确映射到统一数据模型。
+ALIASES.update({
+    "父asin": "parentAsin",
+    "品牌名": "brand",
+    "卖家": "sellerName",
+    "店铺": "storeName",
+    "产品标题": "title",
+    "商品名称": "title",
+    "详情页链接": "url",
+    "商品链接": "url",
+    "图片链接": "image",
+    "图片地址": "image",
+    "主图链接": "image",
+    "主图地址": "image",
+    "大类": "categoryName",
+    "大类排名": "categoryRank",
+    "小类": "subcategoryName",
+    "小类排名": "subcategoryRank",
+    "bsr排名": "rank",
+    "现价": "price",
+    "原价": "originalPrice",
+    "折扣": "discount",
+    "星级": "rating",
+    "评价数": "reviewCount",
+    "上市时间": "launchDate",
+    "上架天数": "daysOnSale",
+    "已上架天数": "daysOnSale",
+    "产品大小": "productSize",
+    "配件清单": "includedComponents",
+    "产品参数": "productParams",
+    "规格参数": "productParams",
+    "包装尺寸单位换算": "packageSize",
+    "包装重量单位换算": "packageWeight",
+    "近30天销量": "sales30d",
+    "30天销量畅销变体": "sales30d",
+    "30天销量(畅销变体)": "sales30d",
+    "30天销量（畅销变体）": "sales30d",
+    "历史月销量": "monthlySales",
+    "月销量趋势": "monthlySales",
+    "历史月销量趋势": "monthlySales",
+    "keepa走势图": "keepaTrend",
+    "评论总结": "summary",
+    "目标人群": "targetAudience",
+    "应用场景": "useScenarios",
+    "改进方向": "optimizationDirection",
+})
+
+REVIEW_ALIASES.update({
+    "评论id": "reviewId",
+    "评价id": "reviewId",
+    "评论人id": "reviewerId",
+    "用户id": "reviewerId",
+    "买家id": "reviewerId",
+    "评论人": "reviewerName",
+    "评价人": "reviewerName",
+    "用户名": "reviewerName",
+    "买家": "reviewerName",
+    "作者": "reviewerName",
+    "评价正文": "content",
+    "评论文本": "content",
+    "星等": "rating",
+    "时间": "date",
+    "评论日期": "date",
+    "评价日期": "date",
+    "评论时间": "date",
+    "评价时间": "date",
+    "评论总结": "summary",
+    "摘要": "summary",
+    "目标人群": "targetAudience",
+    "应用场景": "useScenarios",
+    "改进方向": "optimizationDirection",
+})
+
 def clean(value, keep_formula=False):
     if value is None:
         return None
@@ -447,6 +550,9 @@ def clean(value, keep_formula=False):
 
 def is_empty(value):
     return value is None or value == "" or value == [] or value == {}
+
+def file_matches_needle(fp):
+    return bool(NEEDLE and NEEDLE in os.path.basename(fp).upper())
 
 def unique_join(a, b):
     parts = []
@@ -501,13 +607,125 @@ def map_product_field(label):
     n = norm_label(label)
     if n in ALIASES:
         return ALIASES[n]
+    raw = str(label or "").strip().lower()
+    compact = re.sub(r"[\W_]+", "", raw)
+    if not compact:
+        return None
+    if "asin" in compact:
+        return "asin"
+    if any(x in raw for x in ["商品主图", "主图", "图片链接", "图片地址"]) or any(x in compact for x in ["mainimage", "imageurl", "imgurl"]):
+        return "image"
+    if any(x in raw for x in ["商品详情页链接", "详情页链接", "商品链接", "链接"]) or any(x in compact for x in ["detailpageurl", "producturl", "url"]):
+        return "url"
+    if any(x in raw for x in ["商品标题", "产品标题", "标题", "名称"]) or any(x in compact for x in ["title", "productname", "producttitle"]):
+        return "title"
+    if any(x in raw for x in ["品牌", "牌子"]) or any(x in compact for x in ["brand", "manufacturer"]):
+        return "brand"
+    if any(x in raw for x in ["售价", "价格", "现价"]) or any(x in compact for x in ["price", "currentprice"]):
+        return "price"
+    if any(x in raw for x in ["评分", "星级"]) or any(x in compact for x in ["rating", "starrating"]):
+        return "rating"
+    if any(x in raw for x in ["评论数", "评分数", "ratings数"]) or any(x in compact for x in ["reviewcount", "ratingcount", "reviews"]):
+        return "reviewCount"
+    if any(x in raw for x in ["上架时间", "上线时间", "上市时间"]) or any(x in compact for x in ["launchdate", "availabledate", "firstavailable"]):
+        return "launchDate"
+    if any(x in raw for x in ["上架天数", "已上架天数"]) or any(x in compact for x in ["daysonsale"]):
+        return "daysOnSale"
+    if any(x in raw for x in ["大类bsr", "大类排名", "大类目排名"]) or any(x in compact for x in ["categoryrank", "mainrank"]):
+        return "categoryRank"
+    if any(x in raw for x in ["小类bsr", "小类排名", "小类目排名"]) or any(x in compact for x in ["subcategoryrank", "subrank"]):
+        return "subcategoryRank"
+    if "排名" in raw or "bsr" in compact or "rank" in compact:
+        return "rank"
+    if any(x in raw for x in ["变体数", "变体数量"]) or any(x in compact for x in ["variantcount", "variationcount"]):
+        return "variantCount"
+    if "变体" in raw or "variation" in compact or "variant" in compact:
+        return "variants"
+    if any(x in raw for x in ["材质", "材料"]) or "material" in compact:
+        return "material"
+    if "颜色" in raw or "color" in compact or "colour" in compact:
+        return "color"
+    if any(x in raw for x in ["产品尺寸", "商品尺寸"]) or any(x in compact for x in ["productdimensions", "itemdimensions"]):
+        return "productSize"
+    if any(x in raw for x in ["产品重量", "商品重量"]) or any(x in compact for x in ["productweight", "itemweight"]):
+        return "productWeight"
+    if any(x in raw for x in ["包装内容", "包含组件", "配件清单"]) or any(x in compact for x in ["includedcomponents", "packagecontents", "components"]):
+        return "includedComponents"
+    if "包装尺寸及重量" in raw:
+        return "packageInfo"
+    if "包装尺寸" in raw or "packagedimensions" in compact or "packagesize" in compact:
+        return "packageSize"
+    if "包装重量" in raw or "packageweight" in compact or "shippingweight" in compact:
+        return "packageWeight"
+    if any(x in raw for x in ["详细参数", "产品参数", "规格参数"]) or any(x in compact for x in ["specs", "specifications", "attributes"]):
+        return "productParams"
+    if any(x in raw for x in ["30天销量", "近30天销量", "月销量"]) or any(x in compact for x in ["saleslast30days", "sales30d", "monthsales"]):
+        return "sales30d"
+    if any(x in raw for x in ["历史月销", "历史月销量", "月销量趋势"]) or any(x in compact for x in ["monthlysales", "saleshistory"]):
+        return "monthlySales"
+    if "keepa" in compact:
+        return "keepaTrend"
+    if any(x in raw for x in ["ai评论分析", "评论分析", "评论总结"]) or any(x in compact for x in ["reviewsummary", "reviewsanalysis"]):
+        return "summary"
+    if "产品卖点" in raw or "sellingpoints" in compact or "highlights" in compact:
+        return "sellingPoints"
+    if "好评" in raw or "positive" in compact or "pros" in compact:
+        return "positiveReviews"
+    if "差评" in raw or "negative" in compact or "cons" in compact or "painpoints" in compact:
+        return "negativeReviews"
+    if "待改善" in raw or "improvement" in compact or "suggestion" in compact:
+        return "improvementPoints"
+    if "使用人群" in raw or "targetaudience" in compact or "persona" in compact:
+        return "targetAudience"
+    if "使用场景" in raw or "usescenarios" in compact or "usecases" in compact:
+        return "useScenarios"
+    if "优化方向" in raw or "optimization" in compact or "upgrade" in compact:
+        return "optimizationDirection"
     if re.fullmatch(r"20\d{2}\d{2}", n) or re.fullmatch(r"20\d{2}年\d{1,2}月", n):
         return "monthlySales"
     return None
 
 def map_review_field(label):
     n = norm_label(label)
-    return REVIEW_ALIASES.get(n)
+    if n in REVIEW_ALIASES:
+        return REVIEW_ALIASES.get(n)
+    raw = str(label or "").strip().lower()
+    compact = re.sub(r"[\W_]+", "", raw)
+    if not compact:
+        return None
+    if "asin" in compact:
+        return "asin"
+    if compact in {"reviewid", "id"} or "reviewid" in compact or "评论id" in raw or "评价id" in raw:
+        return "reviewId"
+    if any(x in compact for x in ["reviewerid", "customerid", "userid", "profileid"]):
+        return "reviewerId"
+    if any(x in compact for x in ["reviewername", "customername", "username", "author", "profile"]):
+        return "reviewerName"
+    if any(x in compact for x in ["rating", "star", "score"]) or any(x in raw for x in ["评分", "星级", "星等"]):
+        return "rating"
+    if any(x in compact for x in ["reviewtitle", "title", "headline", "subject"]) or any(x in raw for x in ["评论标题", "评价标题", "标题"]):
+        return "title"
+    if any(x in compact for x in ["reviewcontent", "reviewtext", "reviewbody", "comment", "content", "body", "text"]) or any(x in raw for x in ["评论内容", "评价内容", "评论正文", "内容", "正文"]):
+        return "content"
+    if any(x in compact for x in ["reviewdate", "date", "time", "created"] ) or any(x in raw for x in ["评论时间", "评价时间", "日期", "时间"]):
+        return "date"
+    if any(x in compact for x in ["summary", "analysis", "reviewsummary"]) or any(x in raw for x in ["评论分析", "评论总结", "摘要"]):
+        return "summary"
+    if any(x in compact for x in ["sellingpoints", "highlights", "pros"]) or "产品卖点" in raw:
+        return "sellingPoints"
+    if any(x in compact for x in ["positivereviews", "positivetopics", "positivekeywords"]) or "好评" in raw:
+        return "positiveReviews"
+    if any(x in compact for x in ["negativereviews", "negativetopics", "negativekeywords", "painpoints", "cons"]) or "差评" in raw:
+        return "negativeReviews"
+    if any(x in compact for x in ["improvementpoints", "improvements", "suggestions", "recommendations"]) or "待改善" in raw:
+        return "improvementPoints"
+    if any(x in compact for x in ["targetaudience", "audience", "persona", "customers"]) or "使用人群" in raw:
+        return "targetAudience"
+    if any(x in compact for x in ["usescenarios", "scenarios", "usecases", "scene"]) or "使用场景" in raw:
+        return "useScenarios"
+    if any(x in compact for x in ["optimizationdirection", "optimization", "upgrade"]) or "优化方向" in raw:
+        return "optimizationDirection"
+    return None
 
 def review_payload_has_content(review):
     if not review:
@@ -629,6 +847,11 @@ def parse_table_sheet(ws, source_file):
         asin_col = asin_cols[0]
         mapped = [(i, map_product_field(label), label) for i, label in enumerate(labels)]
         review_mapped = [(i, map_review_field(label), label) for i, label in enumerate(labels)]
+        mapped_keys = {k for _, k, _ in mapped if k}
+        review_keys_present = {k for _, k, _ in review_mapped if k in {"content", "reviewId", "reviewerId", "reviewerName", "date"}}
+        strong_product_keys = {"brand", "image", "url", "price", "categoryRank", "subcategoryRank", "rank", "launchDate", "daysOnSale", "variants", "variantCount", "material", "color", "productSize", "productWeight", "includedComponents", "productParams", "packageInfo", "packageSize", "packageWeight", "sales30d", "monthlySales", "keepaTrend"}
+        if review_keys_present and not (mapped_keys & strong_product_keys):
+            continue
         date_cols = [i for i, label in enumerate(labels) if is_monthly_sales_date_header(label)]
         monthly_priority = monthly_sales_priority(ws.title, labels)
         monthly_sales_context = monthly_priority > 0
@@ -729,23 +952,27 @@ def parse_excel_reviews(fp):
     reviews = []
     try:
         wb = load_workbook(fp, read_only=True, data_only=False)
+        file_scoped = file_matches_needle(fp)
+        review_keys = {"content", "title", "summary", "sellingPoints", "positiveReviews", "negativeReviews", "improvementPoints", "targetAudience", "useScenarios", "optimizationDirection"}
         for ws in wb.worksheets:
             max_header = min(ws.max_row or 0, 30)
             headers = []
             for r_idx, row in enumerate(ws.iter_rows(min_row=1, max_row=max_header, values_only=True), 1):
                 labels = [clean(v) for v in row]
                 mapped = [(i, map_review_field(label), label) for i, label in enumerate(labels)]
-                if any(k == "asin" for _, k, _ in mapped) and any(k in {"content", "title", "summary", "sellingPoints", "positiveReviews", "negativeReviews", "improvementPoints", "targetAudience", "useScenarios", "optimizationDirection"} for _, k, _ in mapped):
+                has_asin = any(k == "asin" for _, k, _ in mapped)
+                has_review = any(k in review_keys for _, k, _ in mapped)
+                if has_review and (has_asin or file_scoped):
                     headers.append((r_idx, mapped))
             for header_idx, mapped in headers[:3]:
                 asin_col = next((i for i, k, _ in mapped if k == "asin"), None)
-                if asin_col is None:
+                if asin_col is None and not file_scoped:
                     continue
                 for row in ws.iter_rows(min_row=header_idx + 1, values_only=True):
-                    asin_value = cell(row, asin_col)
-                    if not asin_value:
+                    asin_value = cell(row, asin_col) if asin_col is not None else None
+                    asin_text = str(asin_value).strip().upper() if asin_value else (NEEDLE if file_scoped else "")
+                    if not asin_text:
                         continue
-                    asin_text = str(asin_value).strip().upper()
                     if NEEDLE and asin_text != NEEDLE:
                         continue
                     review = {"asin": asin_text, "sourceFile": fp, "sourceSheet": ws.title}
@@ -768,16 +995,22 @@ def parse_json_reviews(fp):
     except Exception:
         return []
     reviews = []
+    file_scoped = file_matches_needle(fp)
     def visit(node):
         if isinstance(node, list):
             for item in node:
                 visit(item)
         elif isinstance(node, dict):
             asin = str(node.get("asin") or node.get("ASIN") or node.get("parentAsin") or "").strip().upper()
+            if NEEDLE and asin and asin != NEEDLE:
+                return
+            effective_asin = asin or (NEEDLE if file_scoped else "")
+            if NEEDLE and not effective_asin:
+                return
             text = node.get("content") or node.get("comment") or node.get("text") or node.get("body") or node.get("评论内容") or node.get("评论正文")
             title = node.get("title") or node.get("reviewTitle") or node.get("评论标题")
             review = {
-                    "asin": asin or NEEDLE,
+                    "asin": effective_asin or NEEDLE,
                     "title": clean(title),
                     "content": clean(text),
                     "rating": clean(node.get("rating") or node.get("star") or node.get("星级") or node.get("评分")),
@@ -799,7 +1032,7 @@ def parse_json_reviews(fp):
                     if not is_empty(value):
                         review[key] = value
                         break
-            if (not NEEDLE or asin == NEEDLE) and review_payload_has_content(review):
+            if (not NEEDLE or review["asin"] == NEEDLE) and review_payload_has_content(review):
                 reviews.append(review)
             for value in node.values():
                 if isinstance(value, (list, dict)):
@@ -807,8 +1040,45 @@ def parse_json_reviews(fp):
     visit(data)
     return reviews
 
+def parse_jsonl_reviews(fp):
+    reviews = []
+    file_scoped = file_matches_needle(fp)
+    for enc in ["utf-8-sig", "utf-8", "gb18030"]:
+        try:
+            with open(fp, "r", encoding=enc) as f:
+                for line in f:
+                    text = line.strip()
+                    if not text:
+                        continue
+                    try:
+                        node = json.loads(text)
+                    except Exception:
+                        continue
+                    items = node if isinstance(node, list) else [node]
+                    for item in items:
+                        if not isinstance(item, dict):
+                            continue
+                        asin = str(item.get("asin") or item.get("ASIN") or item.get("parentAsin") or "").strip().upper()
+                        if NEEDLE and asin and asin != NEEDLE:
+                            continue
+                        effective_asin = asin or (NEEDLE if file_scoped else "")
+                        if NEEDLE and not effective_asin:
+                            continue
+                        review = {"asin": effective_asin or NEEDLE, "sourceFile": fp}
+                        for name, value in item.items():
+                            key = map_review_field(name)
+                            if key and not is_empty(value):
+                                review[key] = clean(value)
+                        if review_payload_has_content(review):
+                            reviews.append(review)
+            return reviews
+        except Exception:
+            continue
+    return reviews
+
 def parse_csv_reviews(fp):
     reviews = []
+    file_scoped = file_matches_needle(fp)
     for enc in ["utf-8-sig", "utf-8", "gb18030"]:
         try:
             with open(fp, "r", encoding=enc, newline="") as f:
@@ -816,11 +1086,15 @@ def parse_csv_reviews(fp):
                 if not reader.fieldnames:
                     return []
                 mapped = {name: map_review_field(name) for name in reader.fieldnames}
+                asin_name = next((n for n, k in mapped.items() if k == "asin"), "")
                 for row in reader:
-                    asin = str(row.get(next((n for n, k in mapped.items() if k == "asin"), ""), "")).strip().upper()
-                    if NEEDLE and asin != NEEDLE:
+                    asin = str(row.get(asin_name, "")).strip().upper() if asin_name else ""
+                    if NEEDLE and asin and asin != NEEDLE:
                         continue
-                    review = {"asin": asin or NEEDLE, "sourceFile": fp}
+                    effective_asin = asin or (NEEDLE if file_scoped else "")
+                    if NEEDLE and not effective_asin:
+                        continue
+                    review = {"asin": effective_asin or NEEDLE, "sourceFile": fp}
                     for name, key in mapped.items():
                         if key:
                             value = clean(row.get(name))
@@ -861,10 +1135,47 @@ def parse_txt_reviews(fp):
     except Exception:
         return []
 
+def review_signature(review):
+    if not review:
+        return ""
+    asin = str(review.get("asin") or review.get("ASIN") or NEEDLE or "").strip().upper()
+    review_id = str(review.get("reviewId") or review.get("review_id") or review.get("id") or "").strip().upper()
+    if review_id:
+        return "id|" + asin + "|" + review_id
+    date = str(review.get("date") or review.get("reviewDate") or "").strip()
+    reviewer = str(review.get("reviewerId") or review.get("reviewer_id") or review.get("reviewerName") or review.get("reviewer") or review.get("author") or "").strip().upper()
+    title = str(review.get("title") or "").strip()
+    content = str(review.get("content") or review.get("text") or review.get("summary") or "").strip()
+    rating = str(review.get("rating") or "").strip()
+    text = re.sub(r"[\W_]+", "", (title + " " + content).lower())[:260]
+    if date and reviewer:
+        return "date-user|" + asin + "|" + date + "|" + reviewer
+    return "text|" + asin + "|" + rating + "|" + text
+
+def scoped_unique_reviews(reviews):
+    out = []
+    seen = set()
+    for review in reviews or []:
+        if not review:
+            continue
+        asin = str(review.get("asin") or review.get("ASIN") or "").strip().upper()
+        if NEEDLE:
+            if asin and asin != NEEDLE:
+                continue
+            review["asin"] = NEEDLE
+        key = review_signature(review)
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        out.append(review)
+    return out
+
 if MODE == "market":
     merged = {}
     matched_files = []
     for fp in iter_candidate_files(EXCEL_EXTS):
+        if re.search(r"(reviews?|评论|评价|voc)", os.path.basename(fp), re.I):
+            continue
         for item in parse_excel_products(fp):
             if not item:
                 continue
@@ -887,6 +1198,8 @@ elif MODE == "reviews":
             found = parse_excel_reviews(fp)
         elif ext == ".json":
             found = parse_json_reviews(fp)
+        elif ext == ".jsonl":
+            found = parse_jsonl_reviews(fp)
         elif ext == ".csv":
             found = parse_csv_reviews(fp)
         elif ext == ".txt":
@@ -921,7 +1234,9 @@ elif MODE == "reviews":
                 reviews = fallback_reviews
                 matched_files.extend(fallback_files)
                 break
-    print(json.dumps({"reviews": reviews, "searchedFiles": len(iter_candidate_files(EXCEL_EXTS | TEXT_EXTS)), "matchedFiles": matched_files}, ensure_ascii=False))
+    raw_count = len(reviews)
+    reviews = scoped_unique_reviews(reviews)
+    print(json.dumps({"reviews": reviews, "rawCount": raw_count, "duplicateCount": max(0, raw_count - len(reviews)), "searchedFiles": len(iter_candidate_files(EXCEL_EXTS | TEXT_EXTS)), "matchedFiles": matched_files}, ensure_ascii=False))
 else:
     print(json.dumps({"rows": [], "reviews": []}, ensure_ascii=False))
 `;
@@ -942,7 +1257,8 @@ function getLocalData(mode, asin, fileOverride, limit) {
 }
 
 function fetchAmazonProductPage(asin) {
-  const cacheKey = "amz-page|" + asin;
+  /* v3：脚本新增 sellingPoints 提取后升级缓存键，避免旧缓存缺少五点描述字段 */
+  const cacheKey = "amz-page-v3|" + asin;
   const cached = localDataCache.get(cacheKey);
   if (cached && Date.now() - cached.ts < 30 * 60 * 1000) return cached.data;
   const scriptPath = path.join(root, "scripts", "fetch_amazon_product.js");
@@ -1074,16 +1390,69 @@ function serveLocalReviews(url, res) {
   }
 }
 
+function parseMultipartUpload(req, body) {
+  const type = req.headers["content-type"] || "";
+  const match = type.match(/boundary=(?:"([^"]+)"|([^;]+))/i);
+  if (!match) throw new Error("上传请求缺少 multipart boundary");
+  const boundary = "--" + (match[1] || match[2]);
+  const raw = body.toString("latin1");
+  const parts = raw.split(boundary);
+  for (const part of parts) {
+    if (!/filename=/i.test(part)) continue;
+    const idx = part.indexOf("\r\n\r\n");
+    if (idx < 0) continue;
+    const header = part.slice(0, idx);
+    let content = part.slice(idx + 4);
+    content = content.replace(/\r\n--$/, "").replace(/\r\n$/, "");
+    const fileMatch = header.match(/filename="([^"]*)"/i);
+    const nameMatch = header.match(/name="([^"]*)"/i);
+    const filename = fileMatch && fileMatch[1] ? path.basename(fileMatch[1]).replace(/[^\w.\-\u4e00-\u9fa5]/g, "_") : "reviews-upload.dat";
+    return {
+      fieldName: nameMatch && nameMatch[1] || "file",
+      filename,
+      buffer: Buffer.from(content, "latin1"),
+    };
+  }
+  throw new Error("未找到上传文件");
+}
+
+async function serveLocalReviewUpload(req, url, res) {
+  let saved = "";
+  try {
+    const asin = String(url.searchParams.get("asin") || "").trim().toUpperCase();
+    const limit = Number(url.searchParams.get("limit") || 0) || 0;
+    const body = await readBody(req);
+    const file = parseMultipartUpload(req, body);
+    if (!file.buffer || !file.buffer.length) throw new Error("上传文件为空");
+    const uploadDir = path.join(root, ".review_uploads");
+    fs.mkdirSync(uploadDir, { recursive: true });
+    saved = path.join(uploadDir, Date.now() + "-" + file.filename);
+    fs.writeFileSync(saved, file.buffer);
+    const data = getLocalData("reviews", asin, saved, limit);
+    data.uploadedFile = file.filename;
+    data.uploadedSize = file.buffer.length;
+    writeJson(res, 200, data);
+  } catch (err) {
+    writeJson(res, 500, { error: err.message || String(err), reviews: [] });
+  } finally {
+    if (saved) {
+      try { fs.unlinkSync(saved); } catch (err) { /* ignore */ }
+    }
+  }
+}
+
 async function proxySorftimeMcp(req, res) {
   try {
     const targetUrl = readSorftimeUrl();
     const body = await readBody(req);
+    const headers = {
+      "Content-Type": req.headers["content-type"] || "application/json",
+      "Accept": req.headers.accept || "application/json, text/event-stream",
+    };
+    if (SORFTIME_MCP_AUTH) headers.Authorization = SORFTIME_MCP_AUTH;
     const upstream = await fetch(targetUrl, {
       method: "POST",
-      headers: {
-        "Content-Type": req.headers["content-type"] || "application/json",
-        "Accept": req.headers.accept || "application/json, text/event-stream",
-      },
+      headers,
       body,
     });
     const text = await upstream.text();
@@ -1117,6 +1486,16 @@ http.createServer(async (req, res) => {
       return;
     }
     serveLocalReviews(url, res);
+    return;
+  }
+
+  if (url.pathname === "/api/local/reviews/upload") {
+    if (req.method !== "POST") {
+      res.writeHead(405);
+      res.end("Method Not Allowed");
+      return;
+    }
+    await serveLocalReviewUpload(req, url, res);
     return;
   }
 
