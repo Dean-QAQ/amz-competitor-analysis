@@ -1,4 +1,5 @@
 const http = require("http");
+const https = require("https");
 const fs = require("fs");
 const path = require("path");
 const { spawnSync } = require("child_process");
@@ -6,6 +7,92 @@ const { spawnSync } = require("child_process");
 const root = __dirname;
 const scanRoot = path.resolve(root, "..");
 const codexConfigPath = path.join(process.env.USERPROFILE || "", ".codex", "config.toml");
+
+/* 亚马逊商品页抓取：用于在 MCP 未返回主图时兜底。只抓公开商品页 HTML 里的真实图片字段，
+ * 不访问评论页（评论页需要登录）。走本机代理 127.0.0.1:7897，超时 20 秒。 */
+/* 已废弃：模板字符串转义易错，改为调用 scripts/fetch_amazon_product.js 独立脚本文件 */
+const AMAZON_PRODUCT_FETCH_SCRIPT_DEPRECATED = `
+const https = require("https");
+const http = require("http");
+const { URL } = require("url");
+
+const asin = process.argv[2] || "";
+if (!/^[A-Z0-9]{10}$/.test(asin)) {
+  console.log(JSON.stringify({ found: false, error: "ASIN 格式无效" }));
+  process.exit(0);
+}
+const target = new URL("https://www.amazon.com/dp/" + asin);
+const options = {
+  hostname: target.hostname,
+  path: target.pathname,
+  method: "GET",
+  headers: {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+  },
+};
+function fetchViaProxy() {
+  return new Promise((resolve, reject) => {
+    const req = http.request({ host: "127.0.0.1", port: 7897, path: target.toString(), method: "GET", headers: options.headers, timeout: 20000 }, (res) => {
+      const chunks = [];
+      res.on("data", (c) => chunks.push(c));
+      res.on("end", () => resolve({ status: res.statusCode, body: Buffer.concat(chunks).toString("utf8") }));
+    });
+    req.on("timeout", () => req.destroy(new Error("请求超时")));
+    req.on("error", reject);
+    req.end();
+  });
+}
+function fetchDirect() {
+  return new Promise((resolve, reject) => {
+    const req = https.request(options, (res) => {
+      const chunks = [];
+      res.on("data", (c) => chunks.push(c));
+      res.on("end", () => resolve({ status: res.statusCode, body: Buffer.concat(chunks).toString("utf8") }));
+    });
+    req.on("timeout", () => req.destroy(new Error("请求超时")));
+    req.on("error", reject);
+    req.end();
+  });
+}
+(async () => {
+  let result = null;
+  try { result = await fetchViaProxy(); } catch (err) { /* 代理失败时尝试直连 */ }
+  if (!result || result.status !== 200) {
+    try { result = await fetchDirect(); } catch (err) { /* 直连也失败时报错 */ }
+  }
+  if (!result || result.status !== 200) {
+    console.log(JSON.stringify({ found: false, error: "亚马逊页面返回 " + (result ? result.status : "网络失败") }));
+    process.exit(0);
+  }
+  const html = result.body;
+  const patterns = [
+    /"hiRes":"(https:\\/\\/m\\.media-amazon\\.com\\/images\\/I\\/[^"]+)"/,
+    /"large":"(https:\\/\\/m\\.media-amazon\\.com\\/images\\/I\\/[^"]+)"/,
+    /<meta property="og:image" content="([^"]+)"/,
+  ];
+  let imageUrl = null;
+  for (const re of patterns) {
+    const m = html.match(re);
+    if (m && m[1]) { imageUrl = m[1].replace(/\\\\u([0-9a-fA-F]{4})/g, (s, h) => String.fromCharCode(parseInt(h, 16))).replace(/\\\\/g, ""); break; }
+  }
+  const titleMatch = html.match(/<span id="productTitle"[^>]*>([\\s\\S]*?)<\\/span>/);
+  const title = titleMatch ? titleMatch[1].trim().replace(/\\s+/g, " ") : null;
+  const ratingMatch = html.match(/([0-9.]+) out of 5 stars/);
+  const rating = ratingMatch ? parseFloat(ratingMatch[1]) : null;
+  const reviewCountMatch = html.match(/([0-9,]+) (?:global ratings|ratings|reviews)/i);
+  const reviewCount = reviewCountMatch ? parseInt(reviewCountMatch[1].replace(/,/g, ""), 10) : null;
+  const brandMatch = html.match(/<a id="bylineInfo"[^>]*>([\\s\\S]*?)<\\/a>/);
+  let brand = null;
+  if (brandMatch) {
+    brand = brandMatch[1].replace(/<[^>]+>/g, "").replace(/^(?:Visit the|Brand:)\s*/i, "").replace(/\s*(?:Store|Brand)\s*$/i, "").trim();
+  }
+  const priceMatch = html.match(/class="a-offscreen">\\$([0-9.,]+)/);
+  const price = priceMatch ? parseFloat(priceMatch[1].replace(/,/g, "")) : null;
+  console.log(JSON.stringify({ found: !!(imageUrl || title), imageUrl, title, rating, reviewCount, brand, price }));
+})().catch((err) => console.log(JSON.stringify({ found: false, error: err.message })));
+`;
 
 /* 密钥从 .env.local 读取，避免真实 Key 硬编码进仓库。
  * 本地运行时请把 .env.local 放在本文件同级目录（不提交到 Git）。 */
@@ -854,6 +941,25 @@ function getLocalData(mode, asin, fileOverride, limit) {
   return data;
 }
 
+function fetchAmazonProductPage(asin) {
+  const cacheKey = "amz-page|" + asin;
+  const cached = localDataCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < 30 * 60 * 1000) return cached.data;
+  const scriptPath = path.join(root, "scripts", "fetch_amazon_product.js");
+  const res = spawnSync(process.execPath, [scriptPath, asin], { encoding: "utf8", timeout: 30000, maxBuffer: 40 * 1024 * 1024 });
+  if (res.error) throw new Error(res.error.message);
+  const stdout = String(res.stdout || "").trim();
+  if (!stdout) throw new Error(res.stderr || "亚马逊抓取脚本无输出");
+  const data = JSON.parse(stdout);
+  if (data && data.found) localDataCache.set(cacheKey, { ts: Date.now(), data });
+  /* 亚马逊商品页评论用独立缓存键，30 分钟内直接复用，避免重复抓取 */
+  if (data && data.found && Array.isArray(data.reviews) && data.reviews.length) {
+    const reviewKey = "amz-page-reviews|" + asin;
+    if (!localDataCache.has(reviewKey)) localDataCache.set(reviewKey, { ts: Date.now(), data: data.reviews });
+  }
+  return data;
+}
+
 function writeJson(res, status, payload) {
   res.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",
@@ -870,6 +976,91 @@ function serveLocalMarketResearch(url, res) {
   } catch (err) {
     writeJson(res, 500, { error: err.message || String(err), rows: [] });
   }
+}
+
+function serveAmazonProductPage(url, res) {
+  try {
+    const asin = String(url.searchParams.get("asin") || "").trim().toUpperCase();
+    if (!/^[A-Z0-9]{10}$/.test(asin)) {
+      writeJson(res, 400, { found: false, error: "ASIN 格式无效" });
+      return;
+    }
+    const data = fetchAmazonProductPage(asin);
+    writeJson(res, 200, data || { found: false, error: "亚马逊页面抓取失败" });
+  } catch (err) {
+    writeJson(res, 500, { found: false, error: err.message || String(err) });
+  }
+}
+
+/* 亚马逊商品页自带的部分真实评论（8~12 条），供评论分析兜底使用 */
+function serveAmazonPageReviews(url, res) {
+  try {
+    const asin = String(url.searchParams.get("asin") || "").trim().toUpperCase();
+    if (!/^[A-Z0-9]{10}$/.test(asin)) {
+      writeJson(res, 400, { reviews: [], error: "ASIN 格式无效" });
+      return;
+    }
+    fetchAmazonProductPage(asin);
+    const cached = localDataCache.get("amz-page-reviews|" + asin);
+    const reviews = cached ? cached.data : [];
+    writeJson(res, 200, { reviews, searchedFiles: 0, matchedFiles: ["amazon.com/dp/" + asin], source: "amazon-page" });
+  } catch (err) {
+    writeJson(res, 200, { reviews: [], error: err.message || String(err) });
+  }
+}
+
+/* 图片代理：浏览器直连亚马逊 CDN 可能被墙，由服务端经代理抓取后转发。 */
+const IMAGE_ALLOWED_HOSTS = new Set([
+  "m.media-amazon.com",
+  "images-na.ssl-images-amazon.com",
+  "ecx.images-amazon.com",
+]);
+
+function serveImageProxy(url, res) {
+  const target = String(url.searchParams.get("url") || "");
+  let parsed;
+  try { parsed = new URL(target); } catch (err) {
+    writeJson(res, 400, { error: "图片地址无效" });
+    return;
+  }
+  if (!/^https?:$/.test(parsed.protocol) || !IMAGE_ALLOWED_HOSTS.has(parsed.hostname)) {
+    writeJson(res, 403, { error: "仅允许亚马逊图片域名" });
+    return;
+  }
+  const viaProxy = new Promise((resolve, reject) => {
+    const req = http.request({ host: "127.0.0.1", port: 7897, path: target, method: "GET", headers: { "User-Agent": "Mozilla/5.0", "Accept": "image/*" }, timeout: 20000 }, (up) => {
+      const chunks = [];
+      up.on("data", (c) => chunks.push(c));
+      up.on("end", () => resolve({ status: up.statusCode, type: up.headers["content-type"], body: Buffer.concat(chunks) }));
+    });
+    req.on("timeout", () => req.destroy(new Error("代理请求超时")));
+    req.on("error", reject);
+    req.end();
+  });
+  const direct = new Promise((resolve, reject) => {
+    const mod = parsed.protocol === "https:" ? https : http;
+    const req = mod.request(parsed, { method: "GET", headers: { "User-Agent": "Mozilla/5.0", "Accept": "image/*" }, timeout: 20000 }, (up) => {
+      const chunks = [];
+      up.on("data", (c) => chunks.push(c));
+      up.on("end", () => resolve({ status: up.statusCode, type: up.headers["content-type"], body: Buffer.concat(chunks) }));
+    });
+    req.on("timeout", () => req.destroy(new Error("直连超时")));
+    req.on("error", reject);
+    req.end();
+  });
+  (async () => {
+    let result = null;
+    try { result = await viaProxy; } catch (err) { /* 代理失败走直连 */ }
+    if (!result || result.status !== 200 || !result.body.length) {
+      try { result = await direct; } catch (err) { /* 直连也失败 */ }
+    }
+    if (!result || result.status !== 200 || !result.body.length) {
+      writeJson(res, 502, { error: "图片获取失败" });
+      return;
+    }
+    res.writeHead(200, { "Content-Type": result.type || "image/jpeg", "Cache-Control": "public, max-age=86400" });
+    res.end(result.body);
+  })();
 }
 
 function serveLocalReviews(url, res) {
@@ -929,6 +1120,36 @@ http.createServer(async (req, res) => {
     return;
   }
 
+  if (url.pathname === "/api/amazon/product-page") {
+    if (req.method !== "GET") {
+      res.writeHead(405);
+      res.end("Method Not Allowed");
+      return;
+    }
+    serveAmazonProductPage(url, res);
+    return;
+  }
+
+  if (url.pathname === "/api/image-proxy") {
+    if (req.method !== "GET") {
+      res.writeHead(405);
+      res.end("Method Not Allowed");
+      return;
+    }
+    serveImageProxy(url, res);
+    return;
+  }
+
+  if (url.pathname === "/api/amazon/page-reviews") {
+    if (req.method !== "GET") {
+      res.writeHead(405);
+      res.end("Method Not Allowed");
+      return;
+    }
+    serveAmazonPageReviews(url, res);
+    return;
+  }
+
   if (url.pathname === "/api/mcp/sorftime") {
     if (req.method !== "POST") {
       res.writeHead(405);
@@ -983,7 +1204,10 @@ http.createServer(async (req, res) => {
       res.end("Not found");
       return;
     }
-    res.writeHead(200, { "Content-Type": mime[path.extname(filePath).toLowerCase()] || "application/octet-stream" });
+    const headers = { "Content-Type": mime[path.extname(filePath).toLowerCase()] || "application/octet-stream" };
+    /* HTML 禁缓存，保证修复后的前端代码立刻生效 */
+    if (path.extname(filePath) === ".html") headers["Cache-Control"] = "no-store";
+    res.writeHead(200, headers);
     res.end(data);
   });
 }).listen(3000, "127.0.0.1", () => {

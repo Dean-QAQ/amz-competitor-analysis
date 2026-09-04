@@ -1914,7 +1914,9 @@ const DATA = {"raw":[{"brand":"HOTWAVE","asin":"B0CFJJFLFY","url":"https://www.a
        * ============================================================ */
       const CFG_KEY = "amz_provider_config_v1";
       const CACHE_KEY = "amz_provider_cache_v1";
-      const CACHE_SCHEMA_VERSION = "v7-local-monthly-sales-trend";
+      /* 升级版本号强制清掉旧缓存，避免旧数据里缺失的图片/上架日期继续被优先命中。 */
+/* v9：强制清缓存，避免旧数据里缺失的图片/串数据的评论继续被命中 */
+const CACHE_SCHEMA_VERSION = "v9-asin-scoped-reviews-and-image-proxy";
       const SCREENSHOT_KEY = "amz_competitor_screenshots_v1";
       const QUOTA_KEY = "amz_keepa_quota";
       const CACHE_TTL = 24 * 60 * 60 * 1000;
@@ -3023,7 +3025,7 @@ const DATA = {"raw":[{"brand":"HOTWAVE","asin":"B0CFJJFLFY","url":"https://www.a
         return /^(?:\.\/)?\/?api\//i.test(String(url || "").trim());
       }
       function normalizeLaunchFields(raw) {
-        const launchSource = asText(raw?.launchDate ?? raw?.launch_date ?? raw?.onlineDate ?? raw?.online_date ?? raw?.availableDate ?? raw?.dateFirstAvailable ?? raw?.["上线时间"] ?? raw?.["上架时间"] ?? raw?.releaseDate ?? raw?.firstAvailable);
+        const launchSource = asText(raw?.launchDate ?? raw?.launch_date ?? raw?.onlineDate ?? raw?.online_date ?? raw?.availableDate ?? raw?.dateFirstAvailable ?? raw?.first_available_day ?? raw?.first_available_date ?? raw?.firstAvailableDate ?? raw?.firstAvailable ?? raw?.listedDate ?? raw?.["上线时间"] ?? raw?.["上架时间"] ?? raw?.releaseDate);
         let launchDate = launchSource;
         let daysOnSale = asNumber(raw?.daysOnSale ?? raw?.days_on_sale ?? raw?.daysOnShelf ?? raw?.days_on_shelf ?? raw?.listingAgeDays ?? raw?.["已上架天数"] ?? raw?.["上架天数"]);
         if (!daysOnSale && launchSource) {
@@ -3031,6 +3033,12 @@ const DATA = {"raw":[{"brand":"HOTWAVE","asin":"B0CFJJFLFY","url":"https://www.a
           if (m) {
             launchDate = m[1].trim();
             daysOnSale = asNumber(m[2]);
+          }
+        }
+        if (!daysOnSale && launchSource && /^\d{4}-\d{2}-\d{2}/.test(launchSource)) {
+          const dt = new Date(launchSource);
+          if (!Number.isNaN(dt.getTime())) {
+            daysOnSale = Math.max(0, Math.floor((Date.now() - dt.getTime()) / 86400000));
           }
         }
         return { launchDate: launchDate || null, daysOnSale };
@@ -4766,7 +4774,8 @@ const DATA = {"raw":[{"brand":"HOTWAVE","asin":"B0CFJJFLFY","url":"https://www.a
         });
         return out;
       }
-      const REVIEW_LEARNING_KEY = "amz_review_learning_v2";
+      /* v3：彻底丢弃旧版全局混合词库（其中包含跨 ASIN 串数据的脏数据），按 ASIN 隔离重新学习 */
+      const REVIEW_LEARNING_KEY = "amz_review_learning_v3";
       function emptyReviewLearningBucket() {
         return {
           sellingPoints: [],
@@ -4812,11 +4821,14 @@ const DATA = {"raw":[{"brand":"HOTWAVE","asin":"B0CFJJFLFY","url":"https://www.a
       function mergeLearningValues(current, next, maxItems) {
         return uniqueTextItems([].concat(current || [], next || [])).slice(0, maxItems || 20);
       }
+      /* 评论学习库严格按 ASIN 隔离：只读写当前 ASIN 自己的桶，禁止全局桶参与合并，
+       * 否则前一个竞品的卖点/痛点结论会串到下一个查询结果里。 */
       function rememberReviewLearnings(asin, out) {
         if (!out || typeof out !== "object") return;
+        const key = String(asin || "").trim().toUpperCase();
+        if (!key || key === "__GLOBAL__") return;
         const store = loadReviewLearningStore();
-        const bucket = learningBucket(store, asin);
-        const globalBucket = learningBucket(store, "__GLOBAL__");
+        const bucket = learningBucket(store, key);
         const stats = out.classificationStats || {};
         const targetLabels = extractSummaryLabels(out.targetAudience);
         const scenarioLabels = extractSummaryLabels(out.useScenarios);
@@ -4838,32 +4850,22 @@ const DATA = {"raw":[{"brand":"HOTWAVE","asin":"B0CFJJFLFY","url":"https://www.a
         bucket.sellingPoints = mergeLearningValues(bucket.sellingPoints, sellingPoints, 24);
         bucket.sampleCount = Math.max(Number(bucket.sampleCount) || 0, Number(stats.total) || 0);
         bucket.updatedAt = Date.now();
-        globalBucket.positiveThemes = mergeLearningValues(globalBucket.positiveThemes, positiveThemes, 24);
-        globalBucket.negativeThemes = mergeLearningValues(globalBucket.negativeThemes, negativeThemes, 24);
-        globalBucket.improvementPoints = mergeLearningValues(globalBucket.improvementPoints, improvementPoints, 24);
-        globalBucket.targetAudience = mergeLearningValues(globalBucket.targetAudience, targetAudience, 24);
-        globalBucket.useScenarios = mergeLearningValues(globalBucket.useScenarios, useScenarios, 24);
-        globalBucket.personaProfiles = mergeLearningValues(globalBucket.personaProfiles, personaProfiles, 24);
-        globalBucket.scenarioProfiles = mergeLearningValues(globalBucket.scenarioProfiles, scenarioProfiles, 24);
-        globalBucket.sellingPoints = mergeLearningValues(globalBucket.sellingPoints, sellingPoints, 24);
-        globalBucket.sampleCount = Math.max(Number(globalBucket.sampleCount) || 0, Number(stats.total) || 0);
-        globalBucket.updatedAt = Date.now();
         saveReviewLearningStore(store);
       }
       function getReviewLearningHints(asin) {
-        const store = loadReviewLearningStore();
         const key = String(asin || "").trim().toUpperCase() || "__GLOBAL__";
+        if (key === "__GLOBAL__") return emptyReviewLearningBucket();
+        const store = loadReviewLearningStore();
         const bucket = store.byAsin[key] || emptyReviewLearningBucket();
-        const globalBucket = store.byAsin.__GLOBAL__ || emptyReviewLearningBucket();
         return {
-          sellingPoints: uniqueTextItems([].concat(bucket.sellingPoints || [], globalBucket.sellingPoints || [])),
-          positiveThemes: uniqueTextItems([].concat(bucket.positiveThemes || [], globalBucket.positiveThemes || [])),
-          negativeThemes: uniqueTextItems([].concat(bucket.negativeThemes || [], globalBucket.negativeThemes || [])),
-          improvementPoints: uniqueTextItems([].concat(bucket.improvementPoints || [], globalBucket.improvementPoints || [])),
-          targetAudience: uniqueTextItems([].concat(bucket.targetAudience || [], globalBucket.targetAudience || [])),
-          useScenarios: uniqueTextItems([].concat(bucket.useScenarios || [], globalBucket.useScenarios || [])),
-          personaProfiles: uniqueTextItems([].concat(bucket.personaProfiles || [], globalBucket.personaProfiles || [])),
-          scenarioProfiles: uniqueTextItems([].concat(bucket.scenarioProfiles || [], globalBucket.scenarioProfiles || [])),
+          sellingPoints: uniqueTextItems(bucket.sellingPoints || []),
+          positiveThemes: uniqueTextItems(bucket.positiveThemes || []),
+          negativeThemes: uniqueTextItems(bucket.negativeThemes || []),
+          improvementPoints: uniqueTextItems(bucket.improvementPoints || []),
+          targetAudience: uniqueTextItems(bucket.targetAudience || []),
+          useScenarios: uniqueTextItems(bucket.useScenarios || []),
+          personaProfiles: uniqueTextItems(bucket.personaProfiles || []),
+          scenarioProfiles: uniqueTextItems(bucket.scenarioProfiles || []),
         };
       }
       function buildPersonaProfiles(labels) {
@@ -5421,26 +5423,74 @@ const DATA = {"raw":[{"brand":"HOTWAVE","asin":"B0CFJJFLFY","url":"https://www.a
             : (Array.isArray(raw.structured) ? raw.structured : (raw.reviewsData ? [raw.reviewsData] : []));
           return { reviews, structured, reviewsData: Array.isArray(raw) ? null : (raw.reviewsData || raw.analysis || raw.summaryData || null), meta: raw };
         }
+        /* 亚马逊商品页自带的部分真实评论（8~12 条），作为本地评论文件的补充来源 */
+        async _loadAmazonPageReviews(asin) {
+          const url = "api/amazon/page-reviews?asin=" + encodeURIComponent(String(asin).toUpperCase());
+          const res = await fetch(url, { signal: AbortSignal.timeout(35000) });
+          if (!res.ok) throw new ProviderRequestError("亚马逊页面评论接口 HTTP " + res.status);
+          const raw = await res.json();
+          return Array.isArray(raw.reviews) ? raw.reviews : [];
+        }
         async getProductBasicInfo(asin, marketplace) {
           const item = await this._find(asin);
           const out = empty("basicInfo", asin, marketplace);
-          if (!item) return out;
           const mock = this._mockEntry(asin);
+          if (!item && !mock) {
+            /* 内置目录和市场调研表都没命中时，尝试亚马逊商品页抓取，只取公开真实字段 */
+            try {
+              const res = await fetch("api/amazon/product-page?asin=" + encodeURIComponent(String(asin).toUpperCase()), {
+                method: "GET",
+                signal: AbortSignal.timeout(Math.max(8, Number((manager && manager.config && manager.config.general && manager.config.general.timeout) || 10) * 1000)),
+              });
+              if (res.ok) {
+                const page = await res.json();
+                if (page && page.found) {
+                  out.found = true;
+                  out.brand = page.brand || null;
+                  out.title = page.title || null;
+                  out.url = "https://www.amazon.com/dp/" + asin;
+                  out.price = page.price ?? null;
+                  out.rating = page.rating ?? null;
+                  out.reviewCount = page.reviewCount ?? null;
+                  out.imageUrl = page.imageUrl || null;
+                  out.imageLabel = (page.brand || asin) + " 商品主图";
+                }
+              }
+            } catch (err) { /* 亚马逊抓取失败时静默返回空，不编造 */ }
+            return out;
+          }
           out.found = true;
-          out.brand = item.brand || null;
-          out.title = item.title || null;
-          out.url = item.url || ("https://www.amazon.com/dp/" + asin);
-          out.price = item.price ?? mock?.basicInfo?.price ?? null;
-          out.originalPrice = item.originalPrice ?? mock?.basicInfo?.originalPrice ?? null;
-          out.discount = item.discount ?? mock?.basicInfo?.discount ?? null;
-          out.imageUrl = item.image || null;
+          out.brand = (item && item.brand) || null;
+          out.title = (item && item.title) || null;
+          out.url = (item && item.url) || ("https://www.amazon.com/dp/" + asin);
+          out.price = (item && item.price) ?? (mock && mock.basicInfo && mock.basicInfo.price) ?? null;
+          out.originalPrice = (item && item.originalPrice) ?? (mock && mock.basicInfo && mock.basicInfo.originalPrice) ?? null;
+          out.discount = (item && item.discount) ?? (mock && mock.basicInfo && mock.basicInfo.discount) ?? null;
+          out.imageUrl = (item && item.image) || null;
           out.imageLabel = (item.brand || asin) + " 商品主图";
-          out.category = item.category || null;
-          out.subcategory = item.subcategory || null;
-          out.launchDate = item.launchDate || null;
-          out.daysOnSale = item.daysOnSale || null;
-          out.rating = item.rating ?? null;
-          out.reviewCount = item.reviewCount ?? null;
+          out.category = (item && item.category) || null;
+          out.subcategory = (item && item.subcategory) || null;
+          out.launchDate = (item && item.launchDate) || null;
+          out.daysOnSale = (item && item.daysOnSale) || null;
+          out.rating = (item && item.rating) ?? null;
+          out.reviewCount = (item && item.reviewCount) ?? null;
+          /* 市场调研表/Sif/MCP 都没拿到主图时，用亚马逊商品页抓取兜底 */
+          if (!out.imageUrl) {
+            try {
+              const res = await fetch("api/amazon/product-page?asin=" + encodeURIComponent(String(asin).toUpperCase()), {
+                method: "GET",
+                signal: AbortSignal.timeout(Math.max(8, Number((manager && manager.config && manager.config.general && manager.config.general.timeout) || 10) * 1000)),
+              });
+              if (res.ok) {
+                const page = await res.json();
+                if (page && page.found && page.imageUrl) {
+                  out.imageUrl = page.imageUrl;
+                  if (page.brand && !out.brand) out.brand = page.brand;
+                  if (page.title && !out.title) out.title = page.title;
+                }
+              }
+            } catch (err) { /* 亚马逊抓取失败时保留现有字段，不编造 */ }
+          }
           return out;
         }
         async getProductSpecs(asin, marketplace) {
@@ -5519,6 +5569,10 @@ const DATA = {"raw":[{"brand":"HOTWAVE","asin":"B0CFJJFLFY","url":"https://www.a
           try {
             const reviewPayload = await this._loadExternalReviews(asin);
             const reviewRows = Array.isArray(reviewPayload.reviews) ? reviewPayload.reviews : [];
+            if (reviewPayload.meta && (reviewPayload.meta.searchedFiles !== undefined || reviewPayload.meta.matchedFiles)) {
+              const matched = Array.isArray(reviewPayload.meta.matchedFiles) ? reviewPayload.meta.matchedFiles : [];
+              this.addLog && this.addLog(asin, "reviewsData", "本地评论扫描：检查 " + (reviewPayload.meta.searchedFiles || 0) + " 个文件，命中 " + matched.length + " 个（" + reviewRows.length + " 条评论）" + (matched.length ? "，如 " + matched[0] : ""), "info");
+            }
             const structuredRows = reviewRows.filter((row) => row && typeof row === "object" && (
               row.summary || row.sellingPoints || row.positiveReviews || row.negativeReviews ||
               row.improvementPoints || row.targetAudience || row.useScenarios || row.optimizationDirection
@@ -5537,6 +5591,16 @@ const DATA = {"raw":[{"brand":"HOTWAVE","asin":"B0CFJJFLFY","url":"https://www.a
             }
           } catch (err) {
             /* 本地评论文件未配置或未找到时静默跳过；最终仍严格显示已有真实字段或无数据 */
+          }
+          /* 亚马逊商品页自带评论兜底：本地评论文件没拿到时，从商品页抓取真实评论 */
+          if (!out.rawReviews || !out.rawReviews.length) {
+            try {
+              const pageReviews = await this._loadAmazonPageReviews(asin);
+              if (pageReviews.length) {
+                const classified = analyzeReviewsToFields(asin, normalizeReviewRows(pageReviews), "亚马逊商品页评论");
+                mergeReviewOutput(out, classified, false);
+              }
+            } catch (err) { /* 商品页评论抓取失败时静默跳过 */ }
           }
           out.found = !!(out.summary || out.sellingPoints || out.positiveReviews || out.negativeReviews ||
             out.improvementPoints || out.targetAudience || out.useScenarios || out.optimizationDirection ||
@@ -5870,6 +5934,46 @@ const DATA = {"raw":[{"brand":"HOTWAVE","asin":"B0CFJJFLFY","url":"https://www.a
           });
           return target;
         }
+        /* 生成单次数据源返回的详细摘要，用于调度日志：拿到什么字段、多少条评论/趋势点，一目了然。 */
+        _describeData(kind, data) {
+          if (!data || typeof data !== "object") return "未返回数据";
+          const fields = [];
+          const push = (label, value) => {
+            const text = this._isEmptyValue(value) ? null : (typeof value === "object" ? JSON.stringify(value) : String(value));
+            if (text !== null) fields.push(label + "=" + (text.length > 40 ? text.slice(0, 40) + "…" : text));
+          };
+          if (kind === "basicInfo") {
+            push("标题", data.title); push("品牌", data.brand); push("价格", data.price);
+            push("评分", data.rating); push("评论数", data.reviewCount);
+            push("上架时间", data.launchDate ? data.launchDate + (data.daysOnSale ? "（" + data.daysOnSale + "天）" : "") : null);
+            push("大类排名", data.category); push("小类排名", data.subcategory); push("主图", data.imageUrl ? "已获取" : null);
+          } else if (kind === "salesData") {
+            push("30天销量", data.sales30d);
+            if (Array.isArray(data.monthlySales) && data.monthlySales.length) fields.push("历史月销=" + data.monthlySales.length + "个月");
+            push("BSR大类", data.bsrCategory); push("BSR小类", data.bsrSubcategory);
+          } else if (kind === "keepaData") {
+            if (Array.isArray(data.priceTrend) && data.priceTrend.length) fields.push("价格趋势=" + data.priceTrend.length + "个点");
+            if (Array.isArray(data.bsrTrend) && data.bsrTrend.length) fields.push("BSR趋势=" + data.bsrTrend.length + "个点");
+            push("买盒占有率", data.buyBoxOwnership);
+          } else if (kind === "specs") {
+            push("材质", data.material); push("产品尺寸", data.productSize);
+            push("包装尺寸", data.packageSize); push("包装重量", data.packageWeight);
+            push("变体数", data.variantCount);
+            if (Array.isArray(data.variants) && data.variants.length) fields.push("变体列表=" + data.variants.length + "个");
+          } else if (kind === "reviewsData") {
+            const raw = Array.isArray(data.rawReviews) ? data.rawReviews : [];
+            if (raw.length) fields.push("原始评论=" + raw.length + "条");
+            const stats = data.classificationStats || {};
+            if (stats.total) fields.push("有效样本=" + stats.total + "条");
+            if (stats.duplicateCount) fields.push("去重剔除=" + stats.duplicateCount + "条");
+            if (stats.positiveCount !== undefined && stats.negativeCount !== undefined) {
+              fields.push("好评=" + stats.positiveCount + "条/差评=" + stats.negativeCount + "条");
+            }
+            if (data.sellingPoints) fields.push("已提炼卖点");
+            if (data.improvementPoints) fields.push("已提炼待改善");
+          }
+          return fields.length ? fields.join("，") : "无有效字段";
+        }
         async _fetchKind(kind, method, asin, marketplace) {
           const chain = this.providerChain(kind);
           if (!chain.length) {
@@ -5901,6 +6005,8 @@ const DATA = {"raw":[{"brand":"HOTWAVE","asin":"B0CFJJFLFY","url":"https://www.a
               }
               this._mergeData(merged, data);
               used.push(provider.label);
+              const summary = this._describeData(kind, data);
+              this.addLog(asin, kind, "数据源" + (i + 1) + "（" + provider.label + "）返回：" + summary, "info");
               const missingAfter = this._missingCount(merged, kind);
               if (missingAfter === 0) {
                 this.addLog(asin, kind, "数据源" + (i + 1) + "（" + provider.label + "）返回完整数据，无需继续调用", "info");
@@ -6872,7 +6978,7 @@ const DATA = {"raw":[{"brand":"HOTWAVE","asin":"B0CFJJFLFY","url":"https://www.a
           if (image) {
             const fallback = opts.fallback || "";
             valueHtml = value
-              ? '<div class="mini-image" data-open-image="' + esc(value) + '" data-fallback-image="' + esc(fallback) + '" title="点击查看大图"><img src="' + esc(value) + '" alt="' + esc(label) + '" data-open-image="' + esc(value) + '" data-fallback-image="' + esc(fallback) + '" loading="lazy" /></div>'
+              ? '<div class="mini-image" data-open-image="' + esc(proxiedImageUrl(value)) + '" data-fallback-image="' + esc(fallback) + '" title="点击查看大图"><img src="' + esc(proxiedImageUrl(value)) + '" alt="' + esc(label) + '" data-open-image="' + esc(proxiedImageUrl(value)) + '" data-fallback-image="' + esc(fallback) + '" loading="lazy" /></div>'
               : '<div class="mini-image">商品图片占位</div>';
           } else if (link) {
             const linkHref = href || value;
@@ -7658,6 +7764,12 @@ const DATA = {"raw":[{"brand":"HOTWAVE","asin":"B0CFJJFLFY","url":"https://www.a
         }
         if (url) return { src: url, fallback: local || "", label: imageLabel || (asin + " 商品主图") };
         return { src: local || "", fallback: "", label: imageLabel || (asin + " 商品主图") };
+      }
+      /* 亚马逊图片 CDN 在部分网络下无法直连，统一走本地服务端代理加载 */
+      function proxiedImageUrl(url) {
+        const text = String(url || "").trim();
+        if (!/^https?:\/\/(?:m\.media-amazon\.com|images-na\.ssl-images-amazon\.com|ecx\.images-amazon\.com)\//i.test(text)) return text;
+        return "api/image-proxy?url=" + encodeURIComponent(text);
       }
       async function autoDownloadProductImage(asin, imageUrl) {
         const url = (imageUrl || "").trim();

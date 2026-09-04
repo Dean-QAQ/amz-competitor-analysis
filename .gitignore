@@ -18,6 +18,9 @@ server.out.txt
 *.xlsx
 *.xls
 *.csv
+reviews_*/
+*.server_*.log
+.server_*.log
 
 # 构建产物
 *.zip
