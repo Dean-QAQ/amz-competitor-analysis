@@ -2,7 +2,7 @@ const http = require("http");
 const https = require("https");
 const fs = require("fs");
 const path = require("path");
-const { spawnSync } = require("child_process");
+const { spawnSync, spawn } = require("child_process");
 
 const root = __dirname;
 const scanRoot = path.resolve(root, "..");
@@ -257,7 +257,7 @@ function readBody(req) {
 }
 
 function pythonCandidates() {
-  return [
+  const list = [
     process.env.LOCAL_PYTHON,
     path.join(
       process.env.USERPROFILE || "",
@@ -269,7 +269,51 @@ function pythonCandidates() {
       "python.exe"
     ),
     "python",
+    "py",
   ].filter(Boolean);
+  if (process.platform === "win32") {
+    try {
+      const wh = spawnSync("where.exe", ["python"], { encoding: "utf8", windowsHide: true });
+      String(wh.stdout || "")
+        .split(/\r?\n/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .forEach((p) => list.push(p));
+    } catch (err) { /* ignore */ }
+  }
+  return [...new Set(list)];
+}
+
+/** 评论 Skill Worker 必须用装了 playwright 的 Python；Codex runtime 没有该包，spawn 后秒退。 */
+function pythonCandidatesForReviews() {
+  const preferred = [
+    process.env.AMAZON_REVIEWS_PYTHON,
+    process.env.LOCAL_PYTHON,
+    "python",
+    "py",
+  ].filter(Boolean);
+  if (process.platform === "win32") {
+    try {
+      const wh = spawnSync("where.exe", ["python"], { encoding: "utf8", windowsHide: true });
+      String(wh.stdout || "")
+        .split(/\r?\n/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .forEach((p) => preferred.push(p));
+    } catch (err) { /* ignore */ }
+  }
+  const uniq = [...new Set(preferred)].filter((exe) => !/codex-primary-runtime/i.test(String(exe)));
+  const ok = [];
+  for (const exe of uniq) {
+    try {
+      const args = /(^|[\\/])py(\.exe)?$/i.test(exe)
+        ? ["-3", "-c", "import playwright"]
+        : ["-c", "import playwright"];
+      const res = spawnSync(exe, args, { encoding: "utf8", timeout: 15000, windowsHide: true });
+      if (!res.error && res.status === 0) ok.push(exe);
+    } catch (err) { /* try next */ }
+  }
+  return ok.length ? ok : uniq;
 }
 
 function runPythonJson(script, payload) {
@@ -1384,9 +1428,186 @@ function serveLocalReviews(url, res) {
     const asin = String(url.searchParams.get("asin") || "").trim().toUpperCase();
     const fileOverride = String(url.searchParams.get("file") || "").trim();
     const limit = Number(url.searchParams.get("limit") || 0) || 0;
-    writeJson(res, 200, getLocalData("reviews", asin, fileOverride, limit));
+    const { buildLocalReviewsResponse } = require("./server/amazon-reviews-bridge");
+    writeJson(
+      res,
+      200,
+      buildLocalReviewsResponse({
+        scanRoot,
+        root,
+        asin,
+        fileOverride,
+        limit,
+        getLocalData,
+      })
+    );
   } catch (err) {
     writeJson(res, 500, { error: err.message || String(err), reviews: [] });
+  }
+}
+
+function reviewsApiScript() {
+  return path.join(root, "scripts", "reviews_api.py");
+}
+
+function runReviewsApi(argv, opts) {
+  opts = opts || {};
+  const script = reviewsApiScript();
+  if (!fs.existsSync(script)) throw new Error("缺少 scripts/reviews_api.py");
+  let lastError = "";
+  for (const exe of pythonCandidatesForReviews()) {
+    const args = /(^|[\\/])py(\.exe)?$/i.test(exe) ? ["-3", script].concat(argv) : [script].concat(argv);
+    const res = spawnSync(exe, args, {
+      encoding: "utf8",
+      timeout: opts.timeoutMs || 120000,
+      maxBuffer: 20 * 1024 * 1024,
+      env: Object.assign({}, process.env, { PYTHONIOENCODING: "utf-8", PYTHONUNBUFFERED: "1" }),
+      cwd: path.dirname(script),
+    });
+    if (res.error) {
+      lastError = res.error.message;
+      continue;
+    }
+    const stdout = String(res.stdout || "").trim();
+    const stderr = String(res.stderr || "").trim();
+    if (!stdout) {
+      lastError = stderr || ("python exit " + res.status);
+      continue;
+    }
+    try {
+      return JSON.parse(stdout.split(/\r?\n/).filter(Boolean).pop());
+    } catch (err) {
+      lastError = "invalid json: " + stdout.slice(0, 200);
+    }
+  }
+  throw new Error(lastError || "无法调用 amazon-reviews-skill 桥接脚本");
+}
+
+function spawnReviewsWorker(taskId) {
+  const script = reviewsApiScript();
+  const skillRoot = path.resolve(root, "..", "amazon-reviews-skill");
+  const logDir = path.join(root, "logs");
+  try { fs.mkdirSync(logDir, { recursive: true }); } catch (err) { /* ignore */ }
+  const logFile = path.join(logDir, "reviews-worker-" + (taskId || "next") + ".log");
+  const argsFor = (exe) => {
+    /* Windows py launcher needs -3 before script */
+    if (/(^|[\\/])py(\.exe)?$/i.test(exe)) {
+      const a = ["-3", script, "run"];
+      if (taskId) a.push("--task-id", taskId);
+      return a;
+    }
+    const a = [script, "run"];
+    if (taskId) a.push("--task-id", taskId);
+    return a;
+  };
+  let started = null;
+  const candidates = pythonCandidatesForReviews();
+  if (!candidates.length) {
+    return { error: "未找到带 playwright 的 Python（请用系统 python 安装：pip install playwright）", logFile };
+  }
+  for (const exe of candidates) {
+    try {
+      const outFd = fs.openSync(logFile, "a");
+      fs.writeSync(outFd, "\n---- spawn " + new Date().toISOString() + " exe=" + exe + " task=" + (taskId || "") + " ----\n");
+      const child = spawn(exe, argsFor(exe), {
+        detached: true,
+        stdio: ["ignore", outFd, outFd],
+        cwd: fs.existsSync(skillRoot) ? skillRoot : path.dirname(script),
+        env: Object.assign({}, process.env, { PYTHONIOENCODING: "utf-8", PYTHONUNBUFFERED: "1" }),
+        windowsHide: false,
+      });
+      /* 不要 closeSync(outFd)：detached 子进程仍要用这个 fd 写日志 */
+      child.unref();
+      started = { pid: child.pid, exe, logFile };
+      break;
+    } catch (err) {
+      started = { error: err.message, exe, logFile };
+    }
+  }
+  return started;
+}
+
+async function serveReviewsRun(req, res, url) {
+  try {
+    let taskId = "";
+    if (req.method === "POST") {
+      const raw = await readBody(req);
+      const body = raw ? JSON.parse(String(raw) || "{}") : {};
+      taskId = String(body.taskId || body.id || body.task_id || "").trim();
+    } else {
+      taskId = String((url && url.searchParams.get("id")) || "").trim();
+    }
+    if (!taskId) {
+      writeJson(res, 400, { ok: false, error: "缺少 task id" });
+      return;
+    }
+    const worker = spawnReviewsWorker(taskId);
+    writeJson(res, 200, { ok: !!(worker && worker.pid), taskId, worker });
+  } catch (err) {
+    writeJson(res, 500, { ok: false, error: err.message || String(err) });
+  }
+}
+
+async function serveReviewsEnqueue(req, res) {
+  try {
+    const raw = await readBody(req);
+    const body = raw ? JSON.parse(String(raw)) : {};
+    const asin = String(body.asin || "").trim().toUpperCase();
+    if (!/^[A-Z0-9]{10}$/.test(asin)) {
+      writeJson(res, 400, { ok: false, error: "ASIN 无效" });
+      return;
+    }
+    const argv = [
+      "enqueue",
+      "--asin", asin,
+      "--site", String(body.site || body.marketplace || "US"),
+      "--account", String(body.accountId || body.account_id || "test-us-2"),
+      "--target", String(body.target || 300),
+      "--strategy", String(body.strategy || "show_more"),
+      "--pace", String(body.pace || "cautious"),
+      "--max-pace", String(body.maxPace || body.max_pace || "normal"),
+    ];
+    if (body.skillRoot) argv.push("--skill-root", String(body.skillRoot));
+    const result = runReviewsApi(argv, { timeoutMs: 60000 });
+    let worker = null;
+    if (body.runWorker !== false && result && result.task && result.task.id) {
+      worker = spawnReviewsWorker(result.task.id);
+    }
+    writeJson(res, 200, Object.assign({ worker }, result));
+  } catch (err) {
+    writeJson(res, 500, { ok: false, error: err.message || String(err) });
+  }
+}
+
+function serveReviewsTask(url, res) {
+  try {
+    const id = String(url.searchParams.get("id") || "").trim();
+    if (!id) {
+      writeJson(res, 400, { ok: false, error: "缺少 task id" });
+      return;
+    }
+    const argv = ["task", "--id", id];
+    const skillRoot = String(url.searchParams.get("skillRoot") || "").trim();
+    if (skillRoot) argv.push("--skill-root", skillRoot);
+    writeJson(res, 200, runReviewsApi(argv, { timeoutMs: 30000 }));
+  } catch (err) {
+    writeJson(res, 500, { ok: false, error: err.message || String(err) });
+  }
+}
+
+function serveReviewsStatus(url, res) {
+  try {
+    const asin = String(url.searchParams.get("asin") || "").trim().toUpperCase();
+    if (!/^[A-Z0-9]{10}$/.test(asin)) {
+      writeJson(res, 400, { ok: false, error: "ASIN 无效" });
+      return;
+    }
+    const argv = ["status", "--asin", asin, "--site", String(url.searchParams.get("site") || "US")];
+    const skillRoot = String(url.searchParams.get("skillRoot") || "").trim();
+    if (skillRoot) argv.push("--skill-root", skillRoot);
+    writeJson(res, 200, runReviewsApi(argv, { timeoutMs: 30000 }));
+  } catch (err) {
+    writeJson(res, 500, { ok: false, error: err.message || String(err) });
   }
 }
 
@@ -1486,6 +1707,45 @@ http.createServer(async (req, res) => {
       return;
     }
     serveLocalReviews(url, res);
+    return;
+  }
+
+  if (url.pathname === "/api/reviews/run") {
+    if (req.method !== "POST" && req.method !== "GET") {
+      res.writeHead(405);
+      res.end("Method Not Allowed");
+      return;
+    }
+    await serveReviewsRun(req, res, url);
+    return;
+  }
+  if (url.pathname === "/api/reviews/enqueue") {
+    if (req.method !== "POST") {
+      res.writeHead(405);
+      res.end("Method Not Allowed");
+      return;
+    }
+    await serveReviewsEnqueue(req, res);
+    return;
+  }
+
+  if (url.pathname === "/api/reviews/task") {
+    if (req.method !== "GET") {
+      res.writeHead(405);
+      res.end("Method Not Allowed");
+      return;
+    }
+    serveReviewsTask(url, res);
+    return;
+  }
+
+  if (url.pathname === "/api/reviews/status") {
+    if (req.method !== "GET") {
+      res.writeHead(405);
+      res.end("Method Not Allowed");
+      return;
+    }
+    serveReviewsStatus(url, res);
     return;
   }
 

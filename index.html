@@ -213,6 +213,98 @@
         transition: width 0.2s ease;
       }
 
+      /* 全量评论抓取：独立进度面板（与查询进度条分开） */
+      .amz-crawl-progress {
+        margin-top: 12px;
+        padding: 12px 14px;
+        border: 1px solid #c7dbf5;
+        border-radius: 10px;
+        background: linear-gradient(180deg, #f5f9ff 0%, #eef5ff 100%);
+      }
+      .amz-crawl-progress[hidden] { display: none; }
+      .amz-crawl-progress .amz-crawl-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 10px;
+      }
+      .amz-crawl-progress .amz-crawl-title {
+        font-size: 13px;
+        font-weight: 700;
+        color: #1e3a5f;
+      }
+      .amz-crawl-progress .amz-crawl-hint {
+        font-size: 12px;
+        color: #64748b;
+      }
+      .amz-crawl-row {
+        padding: 10px 0;
+        border-top: 1px dashed #d7e4f5;
+      }
+      .amz-crawl-row:first-of-type { border-top: 0; padding-top: 0; }
+      .amz-crawl-meta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 12px;
+        margin-bottom: 8px;
+        font-size: 12px;
+        color: #475569;
+      }
+      .amz-crawl-asin {
+        font-weight: 700;
+        color: #0f172a;
+        font-family: ui-monospace, Consolas, monospace;
+      }
+      .amz-crawl-chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 1px 8px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+        background: #e2e8f0;
+        color: #334155;
+      }
+      .amz-crawl-chip.queued { background: #fef3c7; color: #92400e; }
+      .amz-crawl-chip.running { background: #dbeafe; color: #1d4ed8; }
+      .amz-crawl-chip.done { background: #dcfce7; color: #166534; }
+      .amz-crawl-chip.failed,
+      .amz-crawl-chip.captcha,
+      .amz-crawl-chip.softbanned,
+      .amz-crawl-chip.needs_login { background: #fee2e2; color: #991b1b; }
+      .amz-crawl-track {
+        height: 10px;
+        border-radius: 999px;
+        background: #dbe7f5;
+        overflow: hidden;
+      }
+      .amz-crawl-track > i {
+        display: block;
+        height: 100%;
+        width: 0%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #1d4ed8, #38bdf8);
+        transition: width 0.35s ease;
+      }
+      .amz-crawl-track.done > i {
+        background: linear-gradient(90deg, #15803d, #4ade80);
+      }
+      .amz-crawl-track.failed > i {
+        background: linear-gradient(90deg, #b91c1c, #f87171);
+      }
+      .amz-crawl-foot {
+        margin-top: 6px;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 8px;
+        font-size: 12px;
+        color: #64748b;
+      }
+      .amz-crawl-foot strong { color: #0f172a; }
+
       .table-card {
         background: var(--card);
         border: 1px solid var(--line);
@@ -1586,6 +1678,17 @@
         </div>
         <div class="log-body" id="dataSourceLogBody"></div>
       </div>
+      <!-- 全量评论抓取进度：独立展示，不混入查询进度 / AI 分析 -->
+      <div class="amz-crawl-progress" id="amzCrawlProgressPanel" hidden>
+        <div class="amz-crawl-head">
+          <div>
+            <div class="amz-crawl-title">全量评论抓取进度</div>
+            <div class="amz-crawl-hint">后台 Chrome 抓取中；条数来自 Skill 实时 checkpoint，完成后请再点一次「查询」刷新 AI 分析。</div>
+          </div>
+          <button class="btn btn-ghost btn-small" id="amzCrawlProgressHideBtn" type="button">隐藏</button>
+        </div>
+        <div id="amzCrawlProgressList"></div>
+      </div>
     </header>
 
     <!-- 第二块：6列网格容器，产品列 item 只在这里循环渲染 -->
@@ -1644,6 +1747,7 @@
         <div class="tabs">
           <button class="tab active" type="button" data-tab="general">通用设置</button>
           <button class="tab" type="button" data-tab="local">本地数据源</button>
+          <button class="tab" type="button" data-tab="amzReviews">评论抓取(Skill)</button>
           <button class="tab" type="button" data-tab="sellersprite">卖家精灵</button>
           <button class="tab" type="button" data-tab="keepa">Keepa API</button>
           <button class="tab" type="button" data-tab="xiyou">西柚</button>
@@ -1876,6 +1980,47 @@
             </div>
             <p class="hint">本地数据源已整合模拟数据、本地评论样本、市场调研表和评论文件。未指定路径时会在允许的本地目录内自动扫描 Excel/CSV/JSON/TXT，按 ASIN 匹配并合并字段；评论原文会自动分类并显示占比。</p>
           </div>
+
+          <div class="tab-panel" id="tab-amzReviews">
+            <div class="form-grid">
+              <label>启用全量评论抓取（amazon-reviews-skill）
+                <select id="amzReviewsEnabled">
+                  <option value="1">启用</option>
+                  <option value="0">关闭</option>
+                </select>
+              </label>
+              <label>无本地数据时自动入队抓取
+                <select id="amzReviewsAutoFetch">
+                  <option value="1">自动（查询时触发）</option>
+                  <option value="0">仅读取已有结果</option>
+                </select>
+              </label>
+              <label>账号 ID（pool.json）
+                <input id="amzReviewsAccountId" type="text" placeholder="test-us-2" />
+              </label>
+              <label>目标条数
+                <input id="amzReviewsTarget" type="number" min="10" max="500" step="10" value="300" />
+              </label>
+              <label>策略
+                <select id="amzReviewsStrategy">
+                  <option value="show_more">show_more（点 Show 10 more）</option>
+                  <option value="hybrid">hybrid</option>
+                  <option value="matrix">matrix（旧）</option>
+                </select>
+              </label>
+              <label>入队后自动拉起 Worker（有头 Chrome）
+                <select id="amzReviewsRunWorker">
+                  <option value="1">是</option>
+                  <option value="0">否（需手动 worker）</option>
+                </select>
+              </label>
+            </div>
+            <div class="test-row">
+              <button class="btn btn-secondary btn-small" id="testAmzReviewsBtn" type="button">检查 Skill / 状态</button>
+              <span class="status-light"><i class="light gray" id="amzReviewsLight"></i><span id="amzReviewsStatusText">未检查</span></span>
+            </div>
+            <p class="hint">点「查询」时：若 Skill 结果不足目标条数，会先入队并拉起 Chrome 全量抓取（默认 300）。页头会出现独立的「全量评论抓取进度」条（约每 4 秒刷新）。页面上立刻出现的「AI评论分析」多半是商品页零星预览；抓完后请再点一次查询。</p>
+          </div>
         </div>
         <div class="modal-foot">
           <button class="btn btn-secondary" id="configCancel" type="button">取消</button>
@@ -1936,7 +2081,147 @@ const DATA = {"raw":[{"brand":"HOTWAVE","asin":"B0CFJJFLFY","url":"https://www.a
       const CACHE_KEY = "amz_provider_cache_v1";
       /* 升级版本号强制清掉旧缓存，避免旧数据里缺失的图片/上架日期继续被优先命中。 */
 /* v9：强制清缓存，避免旧数据里缺失的图片/串数据的评论继续被命中 */
-const CACHE_SCHEMA_VERSION = "v12-empty-start-asin-scoped-review-import-upload-fresh";
+const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
+
+      /* ---------- 全量评论抓取进度条（独立面板，轮询 /api/reviews/status） ---------- */
+      const AMAZON_CRAWL_POLL_MS = 4000;
+      const amazonCrawlTrackers = new Map(); /* asin -> tracker */
+
+      function trackAmazonCrawlProgress(opts) {
+        const asin = String((opts && opts.asin) || "").toUpperCase();
+        if (!/^[A-Z0-9]{10}$/.test(asin)) return;
+        const site = (opts && opts.site) || "US";
+        const target = Math.max(10, Number(opts && opts.target) || 300);
+        const existing = amazonCrawlTrackers.get(asin);
+        if (existing && existing.timer) clearInterval(existing.timer);
+        const tracker = {
+          asin,
+          site,
+          target,
+          taskId: (opts && opts.taskId) || "",
+          count: Number(opts && opts.count) || 0,
+          status: (opts && opts.status) || "queued",
+          error: "",
+          updatedAt: Date.now(),
+          hidden: false,
+          timer: null,
+        };
+        amazonCrawlTrackers.set(asin, tracker);
+        renderAmazonCrawlProgress();
+        const tick = async () => {
+          const cur = amazonCrawlTrackers.get(asin);
+          if (!cur || cur.hidden) return;
+          try {
+            const res = await fetch(
+              "api/reviews/status?asin=" + encodeURIComponent(asin) + "&site=" + encodeURIComponent(cur.site),
+              { signal: AbortSignal.timeout(12000) }
+            );
+            if (!res.ok) throw new Error("HTTP " + res.status);
+            const st = await res.json();
+            const tasks = Array.isArray(st.tasks) ? st.tasks : [];
+            const active = tasks.find((t) => t && (t.status === "queued" || t.status === "running"))
+              || (cur.taskId ? tasks.find((t) => t && t.id === cur.taskId) : null)
+              || null;
+            const latest = active || tasks[0] || null;
+            cur.count = Math.max(Number(st.count) || 0, Number(latest && latest.count) || 0, cur.count || 0);
+            if (latest) {
+              cur.taskId = latest.id || cur.taskId;
+              cur.status = latest.status || cur.status;
+              cur.error = latest.error || latest.stopped_reason || "";
+            }
+            if (cur.count >= cur.target) cur.status = "done";
+            else if (!active && latest && /^(done|failed|softbanned|needs_login|captcha)$/.test(String(latest.status || ""))) {
+              cur.status = latest.status;
+            } else if (!active && cur.count > 0 && cur.count < cur.target && !latest) {
+              /* 无活跃任务但未达标：可能 worker 挂了 */
+              cur.status = cur.status === "running" ? "failed" : cur.status;
+              if (!cur.error) cur.error = "任务已结束但未达目标条数，可重新查询触发入队";
+            }
+            cur.updatedAt = Date.now();
+            renderAmazonCrawlProgress();
+            const terminal = /^(done|failed|softbanned|needs_login|captcha)$/.test(String(cur.status || ""));
+            if (terminal || cur.count >= cur.target) {
+              if (cur.timer) clearInterval(cur.timer);
+              cur.timer = null;
+              cur.status = cur.count >= cur.target ? "done" : cur.status;
+              renderAmazonCrawlProgress();
+            }
+          } catch (err) {
+            cur.error = err && err.message ? err.message : String(err);
+            cur.updatedAt = Date.now();
+            renderAmazonCrawlProgress();
+          }
+        };
+        tick();
+        tracker.timer = setInterval(tick, AMAZON_CRAWL_POLL_MS);
+      }
+
+      function hideAmazonCrawlProgress(asin) {
+        if (asin) {
+          const cur = amazonCrawlTrackers.get(String(asin).toUpperCase());
+          if (cur) {
+            if (cur.timer) clearInterval(cur.timer);
+            cur.timer = null;
+            cur.hidden = true;
+            amazonCrawlTrackers.delete(String(asin).toUpperCase());
+          }
+        } else {
+          amazonCrawlTrackers.forEach((cur) => {
+            if (cur.timer) clearInterval(cur.timer);
+          });
+          amazonCrawlTrackers.clear();
+        }
+        renderAmazonCrawlProgress();
+      }
+
+      function renderAmazonCrawlProgress() {
+        const panel = document.getElementById("amzCrawlProgressPanel");
+        const list = document.getElementById("amzCrawlProgressList");
+        if (!panel || !list) return;
+        const rows = [...amazonCrawlTrackers.values()].filter((t) => !t.hidden);
+        if (!rows.length) {
+          panel.hidden = true;
+          list.innerHTML = "";
+          return;
+        }
+        panel.hidden = false;
+        list.innerHTML = rows.map((t) => {
+          const pct = Math.max(0, Math.min(100, Math.round((Number(t.count) || 0) * 100 / Math.max(1, Number(t.target) || 300))));
+          const status = String(t.status || "queued");
+          const tone = status === "done" || (Number(t.count) >= Number(t.target))
+            ? "done"
+            : (/failed|softbanned|needs_login|captcha/i.test(status) ? "failed" : status);
+          const statusLabel = ({
+            queued: "排队中",
+            running: "抓取中",
+            done: "已完成",
+            failed: "失败",
+            softbanned: "账号软封",
+            needs_login: "需重新登录",
+            captcha: "验证码",
+          })[status] || status;
+          const tip = t.error
+            ? esc(t.error)
+            : (tone === "done"
+              ? "抓取完成，请对该 ASIN 再点一次「查询」刷新 AI 分析"
+              : "后台 Chrome 运行中，约每 " + (AMAZON_CRAWL_POLL_MS / 1000) + " 秒刷新");
+          return (
+            '<div class="amz-crawl-row" data-crawl-asin="' + esc(t.asin) + '">' +
+              '<div class="amz-crawl-meta">' +
+                '<span class="amz-crawl-asin">' + esc(t.asin) + '</span>' +
+                '<span class="amz-crawl-chip ' + esc(tone) + '">' + esc(statusLabel) + '</span>' +
+                (t.taskId ? '<span>task=' + esc(t.taskId) + '</span>' : '') +
+                '<span>站点 ' + esc(t.site) + '</span>' +
+              '</div>' +
+              '<div class="amz-crawl-track ' + esc(tone) + '"><i style="width:' + pct + '%"></i></div>' +
+              '<div class="amz-crawl-foot">' +
+                '<span><strong>' + (Number(t.count) || 0) + '</strong> / ' + (Number(t.target) || 300) + ' 条（' + pct + '%）</span>' +
+                '<span>' + tip + '</span>' +
+              '</div>' +
+            '</div>'
+          );
+        }).join("");
+      }
       const SCREENSHOT_KEY = "amz_competitor_screenshots_v1";
       const QUOTA_KEY = "amz_keepa_quota";
       const CACHE_TTL = 24 * 60 * 60 * 1000;
@@ -1957,6 +2242,14 @@ const CACHE_SCHEMA_VERSION = "v12-empty-start-asin-scoped-review-import-upload-f
           lingxing: { mcpServerUrl: "api/mcp/lingxing", apiKey: "", apiBaseUrl: "", apiKey2: "" },
           voc: { mcpServerUrl: "", apiKey: "", apiBaseUrl: "", apiKey2: "" },
           local: { filePath: "", apiUrl: "api/local/market-research", reviewUrl: "", marketResearchUrl: "", localReviewUrl: "" },
+          amazonReviews: {
+            enabled: true,
+            autoFetch: true,
+            accountId: "test-us-2",
+            target: 300,
+            strategy: "show_more",
+            runWorker: true,
+          },
         };
       }
       function loadConfig() {
@@ -2005,10 +2298,14 @@ const CACHE_SCHEMA_VERSION = "v12-empty-start-asin-scoped-review-import-upload-f
               apiUrl: (saved.marketResearch || {}).apiUrl || "",
               reviewUrl: (saved.localReviews || {}).reviewUrl || (saved.localReviews || {}).apiUrl || "",
             }),
+            amazonReviews: Object.assign(defaultConfig().amazonReviews, saved.amazonReviews || {}),
           });
           cfg.sorftime.mcpServerUrl = normalizeRelativeApiPath(cfg.sorftime.mcpServerUrl || "api/mcp/sorftime") || "api/mcp/sorftime";
           cfg.local.apiUrl = normalizeRelativeApiPath(cfg.local.apiUrl || "api/local/market-research") || "api/local/market-research";
           cfg.local.reviewUrl = normalizeRelativeApiPath(cfg.local.reviewUrl || "") || "";
+          if (typeof cfg.amazonReviews.enabled !== "boolean") cfg.amazonReviews.enabled = cfg.amazonReviews.enabled !== "0" && cfg.amazonReviews.enabled !== false;
+          if (typeof cfg.amazonReviews.autoFetch !== "boolean") cfg.amazonReviews.autoFetch = cfg.amazonReviews.autoFetch !== "0" && cfg.amazonReviews.autoFetch !== false;
+          if (typeof cfg.amazonReviews.runWorker !== "boolean") cfg.amazonReviews.runWorker = cfg.amazonReviews.runWorker !== "0" && cfg.amazonReviews.runWorker !== false;
           /* 升级策略：旧配置若保存过旧数据源名，自动迁移到统一后的数据源 */
           const legacyMap = {
             "mock": "local", "local-reviews": "local", "market-research": "local",
@@ -5352,9 +5649,8 @@ const CACHE_SCHEMA_VERSION = "v12-empty-start-asin-scoped-review-import-upload-f
         get label() { return "本地数据源"; }
         /* 内置市场调研目录 + 本地评论样本存在即可用；配置了外部接口时用于补充目录外的 ASIN */
         isConfigured() {
-          const hasExternal = !!(this.config && (this.config.filePath || this.config.apiUrl || this.config.reviewUrl));
-          const hasLocal = MARKET_RESEARCH_CATALOG.some((item) => item.asin);
-          return hasExternal || hasLocal;
+          /* 本地源始终可用：至少能走商品页评论预览 + amazon-reviews-skill 入队 */
+          return true;
         }
         _searchByAsin(asin) {
           const upper = String(asin || "").toUpperCase();
@@ -5508,6 +5804,132 @@ const CACHE_SCHEMA_VERSION = "v12-empty-start-asin-scoped-review-import-upload-f
           if (!res.ok) throw new ProviderRequestError("亚马逊页面评论接口 HTTP " + res.status);
           const raw = await res.json();
           return Array.isArray(raw.reviews) ? raw.reviews : [];
+        }
+        async _ensureAmazonReviewsCrawl(asin, marketplace) {
+          const ar = (typeof manager !== "undefined" && manager.config && manager.config.amazonReviews) || {};
+          const enabled = ar.enabled !== false && ar.enabled !== "0";
+          const autoFetch = ar.autoFetch !== false && ar.autoFetch !== "0";
+          const runWorker = ar.runWorker !== false && ar.runWorker !== "0";
+          if (!enabled) {
+            return { message: "评论Skill已关闭（配置→评论抓取），跳过全量抓取。", count: 0, resultExists: false, skipped: true };
+          }
+          if (!autoFetch) {
+            return { message: "评论Skill自动入队已关闭，仅读取已有结果。", count: 0, resultExists: false, skipped: true };
+          }
+          const site = marketplace || (manager && manager.config && manager.config.general && manager.config.general.site) || "US";
+          const upper = String(asin || "").toUpperCase();
+          const target = Math.max(10, Number(ar.target) || 300);
+          let count = 0;
+          let resultExists = false;
+          const statusRes = await fetch(
+            "api/reviews/status?asin=" + encodeURIComponent(upper) + "&site=" + encodeURIComponent(site),
+            { signal: AbortSignal.timeout(12000) }
+          );
+          if (!statusRes.ok) throw new Error("reviews/status HTTP " + statusRes.status);
+          const st = await statusRes.json();
+          count = Number(st && st.count) || 0;
+          resultExists = !!(st && st.resultExists && count > 0);
+          if (count >= target) {
+            return {
+              message: "评论Skill已有 " + count + "/" + target + " 条，无需再抓。",
+              count,
+              resultExists,
+              skipped: true,
+              enough: true,
+            };
+          }
+          const active = Array.isArray(st.tasks)
+            ? st.tasks.find((t) => t && (t.status === "queued" || t.status === "running"))
+            : null;
+          if (active) {
+            let worker = null;
+            /* 关键死穴：任务停在 queued 但 Chrome Worker 从未拉起 → 这里强制再 spawn */
+            if (active.status === "queued" && runWorker) {
+              try {
+                const kickRes = await fetch("api/reviews/run", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ taskId: active.id }),
+                  signal: AbortSignal.timeout(15000),
+                });
+                worker = await kickRes.json();
+              } catch (err) {
+                worker = { error: err.message || String(err) };
+              }
+            }
+            const kickNote = worker && worker.worker && worker.worker.pid
+              ? "，已重新拉起 Chrome worker pid=" + worker.worker.pid
+              : (worker && worker.error ? "，拉起Worker失败：" + worker.error : "");
+            trackAmazonCrawlProgress({
+              asin: upper,
+              site,
+              target,
+              taskId: active.id,
+              count,
+              status: active.status || "queued",
+            });
+            return {
+              message: "全量评论抓取" + (active.status === "running" ? "进行中" : "排队中") +
+                "（已有 " + count + "/" + target + "，task=" + active.id + "，status=" + active.status + kickNote + "）。完成后请重新查询。",
+              count,
+              resultExists,
+              skipped: false,
+              active: true,
+              worker,
+              taskId: active.id,
+              target,
+              site,
+            };
+          }
+          const enqRes = await fetch("api/reviews/enqueue", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              asin: upper,
+              site,
+              accountId: ar.accountId || "test-us-2",
+              target,
+              strategy: ar.strategy || "show_more",
+              runWorker,
+            }),
+            signal: AbortSignal.timeout(20000),
+          });
+          const enq = await enqRes.json();
+          if (!enqRes.ok || !enq.ok) throw new Error((enq && enq.error) || ("HTTP " + enqRes.status));
+          const taskId = enq.task && enq.task.id;
+          const workerPid = enq.worker && enq.worker.pid;
+          if (runWorker && taskId && !workerPid) {
+            /* enqueue 成功但 worker 没 pid → 立刻补拉一次 */
+            try {
+              await fetch("api/reviews/run", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ taskId }),
+                signal: AbortSignal.timeout(15000),
+              });
+            } catch (err) { /* logged via message */ }
+          }
+          trackAmazonCrawlProgress({
+            asin: upper,
+            site,
+            target,
+            taskId,
+            count,
+            status: "queued",
+          });
+          return {
+            message: "已入队全量评论抓取（当前 Skill " + count + "/" + target + " 条，task=" + taskId +
+              (workerPid ? "，worker pid=" + workerPid : "，请确认本机已弹出 Chrome") +
+              "）。后台需数分钟；下方若先出现十来条「AI评论」，只是商品页零星预览，抓完请再查一次。",
+            count,
+            resultExists,
+            skipped: false,
+            taskId,
+            workerPid,
+            worker: enq.worker || null,
+            target,
+            site,
+          };
         }
         async getProductBasicInfo(asin, marketplace) {
           const item = await this._find(asin);
@@ -5720,15 +6142,43 @@ const CACHE_SCHEMA_VERSION = "v12-empty-start-asin-scoped-review-import-upload-f
           } catch (err) {
             /* 本地评论文件未配置或未找到时静默跳过；最终仍严格显示已有真实字段或无数据 */
           }
-          /* 亚马逊商品页自带评论兜底：本地评论文件没拿到时，从商品页抓取真实评论 */
-          if (!out.rawReviews || !out.rawReviews.length) {
+          /* 全量抓取：只要 Skill 结果 < 目标条数就入队（不要被「已有十几条商品页评论」挡住） */
+          const arCfg = (typeof manager !== "undefined" && manager.config && manager.config.amazonReviews) || {};
+          const crawlTarget = Math.max(10, Number(arCfg.target) || 300);
+          let crawlInfo = null;
+          try {
+            crawlInfo = await this._ensureAmazonReviewsCrawl(asin, marketplace);
+            if (crawlInfo && crawlInfo.message) {
+              this.addLog && this.addLog(asin, "reviewsData", crawlInfo.message, "info");
+            }
+            /* 再读一次 Skill 结果（可能已有历史 JSON，或 worker 极快写完） */
+            try {
+              const again = await this._loadExternalReviews(asin);
+              const rows2 = Array.isArray(again.reviews) ? again.reviews : [];
+              if (rows2.length) {
+                mergeReviewOutput(out, analyzeReviewsToFields(asin, normalizeReviewRows(rows2, asin), "amazon-reviews-skill"), false);
+              }
+            } catch (err2) { /* ignore */ }
+          } catch (err) {
+            this.addLog && this.addLog(asin, "reviewsData", "评论抓取入队失败：" + (err.message || err), "warn");
+          }
+          const skillCount = Array.isArray(out.rawReviews) ? out.rawReviews.length : 0;
+          /* 商品页零星评论：仅作临时预览；全量未达标时仍展示，并保留抓取提示 */
+          if (skillCount < Math.min(crawlTarget, 80)) {
             try {
               const pageReviews = await this._loadAmazonPageReviews(asin);
               if (pageReviews.length) {
-              const classified = analyzeReviewsToFields(asin, normalizeReviewRows(pageReviews, asin), "亚马逊商品页评论");
+                const classified = analyzeReviewsToFields(
+                  asin,
+                  normalizeReviewRows(pageReviews, asin),
+                  skillCount ? "亚马逊商品页评论（临时预览，全量抓取未完成）" : "亚马逊商品页评论（临时预览，全量抓取进行中）"
+                );
                 mergeReviewOutput(out, classified, false);
               }
             } catch (err) { /* 商品页评论抓取失败时静默跳过 */ }
+          }
+          if (crawlInfo && crawlInfo.message) {
+            out.summary = [crawlInfo.message, out.summary].filter(Boolean).join("\n");
           }
           /* 亚马逊商品页五点描述兜底：卖点字段仍为空时抓取 feature bullets 原文，
            * 翻译成中文后交给 summarizeSellingPointsToFive 精炼为 5 条。 */
@@ -5983,7 +6433,16 @@ const CACHE_SCHEMA_VERSION = "v12-empty-start-asin-scoped-review-import-upload-f
           this.lastRequestAt = Date.now();
         }
         async _callMethod(provider, method, asin, marketplace) {
-          const timeout = Math.max(1, Number(this.config.general?.timeout) || 10) * 1000;
+          let timeout = Math.max(1, Number(this.config.general?.timeout) || 10) * 1000;
+          /* 本地评论链路含 Skill 入队 + 商品页预览，默认 10s 会把入队掐死 */
+          if (method === "getReviewsData") {
+            const ar = this.config.amazonReviews || {};
+            if (ar.enabled !== false && ar.autoFetch !== false) {
+              timeout = Math.max(timeout, 55000);
+            } else {
+              timeout = Math.max(timeout, 40000);
+            }
+          }
           const retries = Math.max(0, Number(this.config.general?.retries) || 0);
           let lastErr;
           for (let i = 0; i <= retries; i++) {
@@ -6137,6 +6596,38 @@ const CACHE_SCHEMA_VERSION = "v12-empty-start-asin-scoped-review-import-upload-f
           return fields.length ? fields.join("，") : "无有效字段";
         }
         async _fetchKind(kind, method, asin, marketplace) {
+          /* 查询一开始就触发全量评论入队，不依赖 local 是否排到队尾、也不被其它源「假完整」挡住 */
+          if (kind === "reviewsData") {
+            try {
+              this.addLog(asin, kind, "开始检查 amazon-reviews-skill 全量抓取…", "info");
+              const localProbe = this.resolve("local");
+              const provider = (localProbe && localProbe.provider)
+                || (window.ProductDataProviderRegistry.providers.local
+                  && window.ProductDataProviderRegistry.providers.local.create(this.config.local || {}));
+              if (provider && typeof provider._ensureAmazonReviewsCrawl === "function") {
+                const crawlInfo = await provider._ensureAmazonReviewsCrawl(asin, marketplace);
+                if (crawlInfo && crawlInfo.message) {
+                  this.addLog(asin, kind, crawlInfo.message, crawlInfo.skipped && !crawlInfo.enough ? "warn" : "info");
+                } else {
+                  this.addLog(asin, kind, "评论Skill检查完成（无额外动作）", "info");
+                }
+                if (crawlInfo && !crawlInfo.skipped && !crawlInfo.enough) {
+                  trackAmazonCrawlProgress({
+                    asin,
+                    site: crawlInfo.site || marketplace || "US",
+                    target: crawlInfo.target || ((manager.config.amazonReviews || {}).target) || 300,
+                    taskId: crawlInfo.taskId || "",
+                    count: crawlInfo.count || 0,
+                    status: crawlInfo.active ? "running" : "queued",
+                  });
+                }
+              } else {
+                this.addLog(asin, kind, "无法创建 LocalProvider，跳过评论Skill入队", "err");
+              }
+            } catch (err) {
+              this.addLog(asin, kind, "全量评论入队失败：" + (err && err.message || err), "warn");
+            }
+          }
           const chain = this.providerChain(kind);
           if (!chain.length) {
             this.addLog(asin, kind, "没有可用的已配置数据源，该维度显示无数据", "warn");
@@ -6145,9 +6636,15 @@ const CACHE_SCHEMA_VERSION = "v12-empty-start-asin-scoped-review-import-upload-f
           const merged = empty(kind, asin, marketplace);
           const used = [];
           const messages = [];
-          for (let i = 0; i < chain.length; i++) {
+          /* 保证 local 在评论链末端仍会被调用（入队 + Skill 读取），即使前面源已填了摘要字段 */
+          const chainFinal = kind === "reviewsData" && !chain.includes("local")
+            ? chain.concat(["local"])
+            : (kind === "reviewsData" && chain[chain.length - 1] !== "local"
+              ? chain.filter((id) => id !== "local").concat(["local"])
+              : chain);
+          for (let i = 0; i < chainFinal.length; i++) {
             if (this.abort && this.abort.signal.aborted) break;
-            const id = chain[i];
+            const id = chainFinal[i];
             const resolved = this.resolve(id);
             if (resolved.degraded) {
               this.addLog(asin, kind, "数据源" + (i + 1) + "（" + id + "）" + resolved.reason, "warn");
@@ -6205,9 +6702,15 @@ const CACHE_SCHEMA_VERSION = "v12-empty-start-asin-scoped-review-import-upload-f
                 });
                 merged.rawReviews.totalUnique = uniqueRows.length;
                 merged.rawReviews.filteredCount = merged.rawReviews.filteredCount || 0;
+                /* 保留全量抓取提示行（若有），避免被规则摘要盖掉 */
+                const crawlBanner = String(merged.summary || "")
+                  .split(/\n+/)
+                  .filter((line) => /全量评论抓取|已入队全量评论/.test(line))
+                  .join("\n");
                 ["summary", "sellingPoints", "positiveReviews", "negativeReviews", "improvementPoints", "targetAudience", "useScenarios"].forEach((key) => {
                   if (unified[key]) merged[key] = unified[key];
                 });
+                if (crawlBanner) merged.summary = [crawlBanner, merged.summary].filter(Boolean).join("\n");
                 if (unified.optimizationDirection) merged.optimizationDirection = unified.optimizationDirection;
                 if (unified.classificationStats) merged.classificationStats = unified.classificationStats;
                 messages.push("评论已跨数据源去重合并，最终有效样本 " + uniqueRows.length + " 条");
@@ -6222,8 +6725,20 @@ const CACHE_SCHEMA_VERSION = "v12-empty-start-asin-scoped-review-import-upload-f
         _missingCount(data, kind) {
           if (!data || typeof data !== "object") return 99;
           const keys = this._relevantKeys(kind);
-          if (keys.length) return keys.filter((k) => this._isEmptyValue(data[k])).length;
-          return Object.keys(data).filter((k) => !["found", "asin", "marketplace", "isMockEstimate"].includes(k) && this._isEmptyValue(data[k])).length;
+          let missing = keys.length
+            ? keys.filter((k) => this._isEmptyValue(data[k])).length
+            : Object.keys(data).filter((k) => !["found", "asin", "marketplace", "isMockEstimate"].includes(k) && this._isEmptyValue(data[k])).length;
+          /* 评论维度：Skill 全量未达标时不算「完整」，必须继续走到 local 去入队抓取 */
+          if (kind === "reviewsData") {
+            const ar = this.config.amazonReviews || {};
+            if (ar.enabled !== false && ar.autoFetch !== false) {
+              const target = Math.max(10, Number(ar.target) || 300);
+              const rawLen = Array.isArray(data.rawReviews) ? data.rawReviews.length : 0;
+              const minAccept = Math.min(target, 80);
+              if (rawLen < minAccept) missing += 1;
+            }
+          }
+          return missing;
         }
         _getCache(key) {
           const entry = this.cache[key];
@@ -6248,7 +6763,15 @@ const CACHE_SCHEMA_VERSION = "v12-empty-start-asin-scoped-review-import-upload-f
           const safeAsin = String(asin || "").toUpperCase();
           const key = CACHE_SCHEMA_VERSION + "|" + safeAsin + "|" + (marketplace || "US") + "|" + this.fingerprint();
           const cached = this._getCache(key);
-          if (cached) return Object.assign({}, cached, { asin, cached: true });
+          if (cached) {
+            const ar = this.config.amazonReviews || {};
+            const raw = cached.data && cached.data.reviewsData && cached.data.reviewsData.rawReviews;
+            const rawLen = Array.isArray(raw) ? raw.length : 0;
+            const target = Math.max(10, Number(ar.target) || 300);
+            const sparse = ar.enabled !== false && ar.autoFetch !== false && rawLen < Math.min(target, 80);
+            if (!sparse) return Object.assign({}, cached, { asin, cached: true });
+            this.addLog(safeAsin, "reviewsData", "缓存评论样本仅 " + rawLen + " 条（不足全量），忽略缓存并重新查询/入队抓取", "warn");
+          }
           const result = {
             asin: safeAsin, marketplace: marketplace || "US", matched: false,
             source: null, degraded: null, cached: false, fetchedAt: Date.now(),
@@ -8633,6 +9156,13 @@ const CACHE_SCHEMA_VERSION = "v12-empty-start-asin-scoped-review-import-upload-f
         document.getElementById("vocApiKey").value = cfg.voc.apiKey2 || "";
         document.getElementById("marketResearchUrl").value = cfg.local.filePath || cfg.local.apiUrl || "";
         document.getElementById("localReviewUrl").value = cfg.local.reviewUrl || "";
+        const ar = cfg.amazonReviews || defaultConfig().amazonReviews;
+        document.getElementById("amzReviewsEnabled").value = ar.enabled === false ? "0" : "1";
+        document.getElementById("amzReviewsAutoFetch").value = ar.autoFetch === false ? "0" : "1";
+        document.getElementById("amzReviewsAccountId").value = ar.accountId || "test-us-2";
+        document.getElementById("amzReviewsTarget").value = ar.target || 300;
+        document.getElementById("amzReviewsStrategy").value = ar.strategy || "show_more";
+        document.getElementById("amzReviewsRunWorker").value = ar.runWorker === false ? "0" : "1";
         document.getElementById("keepaQuota").textContent = loadKeepaQuota() ?? "--";
         updateConnectionLights();
       }
@@ -8687,6 +9217,13 @@ const CACHE_SCHEMA_VERSION = "v12-empty-start-asin-scoped-review-import-upload-f
           cfg.local.apiUrl = "api/local/market-research";
         }
         cfg.local.reviewUrl = document.getElementById("localReviewUrl").value.trim();
+        cfg.amazonReviews = cfg.amazonReviews || Object.assign({}, defaultConfig().amazonReviews);
+        cfg.amazonReviews.enabled = document.getElementById("amzReviewsEnabled").value !== "0";
+        cfg.amazonReviews.autoFetch = document.getElementById("amzReviewsAutoFetch").value !== "0";
+        cfg.amazonReviews.accountId = document.getElementById("amzReviewsAccountId").value.trim() || "test-us-2";
+        cfg.amazonReviews.target = Math.max(10, Number(document.getElementById("amzReviewsTarget").value) || 300);
+        cfg.amazonReviews.strategy = document.getElementById("amzReviewsStrategy").value || "show_more";
+        cfg.amazonReviews.runWorker = document.getElementById("amzReviewsRunWorker").value !== "0";
         return cfg;
       }
       function updateConnectionLights() {
@@ -8705,6 +9242,12 @@ const CACHE_SCHEMA_VERSION = "v12-empty-start-asin-scoped-review-import-upload-f
         setLight("lingxingMcp", lingxingProxy ? "已配置（本机代理注入密钥）" : (cfg.lingxing.apiKey && cfg.lingxing.mcpServerUrl ? "已配置（MCP）" : "未配置"), lingxingProxy ? "green" : (cfg.lingxing.apiKey && cfg.lingxing.mcpServerUrl ? "green" : "gray"));
         setLight("voc", cfg.voc.apiKey && cfg.voc.mcpServerUrl ? "未测试（MCP）" : (cfg.voc.apiKey2 && cfg.voc.apiBaseUrl ? "未测试（API）" : "未配置"));
         setLight("local", "已配置（内置市场调研 + 评论样本）", "green");
+        const ar = cfg.amazonReviews || {};
+        setLight(
+          "amzReviews",
+          ar.enabled === false ? "已关闭" : ("已启用 / 自动入队=" + (ar.autoFetch === false ? "关" : "开") + " / " + (ar.accountId || "test-us-2") + " / 目标" + (ar.target || 300)),
+          ar.enabled === false ? "gray" : "green"
+        );
       }
       function setLight(name, text, color) {
         const light = document.getElementById(name + "Light");
@@ -8729,6 +9272,8 @@ const CACHE_SCHEMA_VERSION = "v12-empty-start-asin-scoped-review-import-upload-f
         if (sharePresetOpenBtn) sharePresetOpenBtn.addEventListener("click", openConfig);
         if (sharePresetHideBtn) sharePresetHideBtn.addEventListener("click", () => setSharedPresetBanner(false));
         document.getElementById("clearLogBtn").addEventListener("click", clearProviderLogs);
+        const crawlHideBtn = document.getElementById("amzCrawlProgressHideBtn");
+        if (crawlHideBtn) crawlHideBtn.addEventListener("click", () => hideAmazonCrawlProgress());
         document.getElementById("shareLinkBtn").addEventListener("click", copyShareLink);
         document.getElementById("shareJsonBtn").addEventListener("click", copyShareJson);
         document.getElementById("shareImportBtn").addEventListener("click", importSharedConfigFromInput);
@@ -8795,6 +9340,25 @@ const CACHE_SCHEMA_VERSION = "v12-empty-start-asin-scoped-review-import-upload-f
           const provider = new LocalProvider(manager.config.local);
           const res = await provider.testConnection();
           setLight("local", res.status === "connected" ? "已连接" : res.message, res.status === "connected" ? "green" : (res.status === "failed" ? "red" : "gray"));
+        });
+        document.getElementById("testAmzReviewsBtn").addEventListener("click", async () => {
+          collectConfigFromForm();
+          saveConfig(manager.config);
+          try {
+            const site = manager.config.general.site || "US";
+            const res = await fetch("api/reviews/status?asin=B0CQX8B5K9&site=" + encodeURIComponent(site), { signal: AbortSignal.timeout(20000) });
+            const data = await res.json();
+            if (!res.ok || data.ok === false) throw new Error((data && data.error) || ("HTTP " + res.status));
+            setLight(
+              "amzReviews",
+              "Skill OK / 样例ASIN已有 " + (data.count || 0) + " 条 / root=" + (data.skillRoot || "").slice(-40),
+              "green"
+            );
+            showToast("评论抓取 Skill 可用");
+          } catch (err) {
+            setLight("amzReviews", "检查失败：" + (err.message || err), "red");
+            showToast("评论抓取 Skill 不可用：" + (err.message || err));
+          }
         });
         document.getElementById("configSave").addEventListener("click", () => {
           collectConfigFromForm();
