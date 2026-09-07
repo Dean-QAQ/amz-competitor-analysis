@@ -7,9 +7,11 @@ const path = require("path");
 
 function resolveSkillDataDirs(scanRoot, root) {
   const candidates = [
+    /* Prefer skill embedded inside this repo */
+    path.resolve(root, "amazon-reviews-skill", "data"),
     path.resolve(scanRoot, "amazon-reviews-skill", "data"),
-    path.resolve(scanRoot, "..", "amazon-reviews-skill", "data"),
     path.resolve(root, "..", "amazon-reviews-skill", "data"),
+    path.resolve(scanRoot, "..", "amazon-reviews-skill", "data"),
     path.resolve(root, "..", "..", "amazon-reviews-skill", "data"),
   ];
   const seen = new Set();

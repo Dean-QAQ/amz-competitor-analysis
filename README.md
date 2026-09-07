@@ -5,15 +5,19 @@
 ## 本地运行
 
 ```bash
-# 方式1：Node 代理（支持真实 MCP 数据源）
+# 方式1：完整后端（推荐，含评论全量抓取）
+node .local_static_server.js
+# 浏览器打开 http://127.0.0.1:3000
+
+# 方式2：Node 代理
 node server/local-server.js
 # 浏览器打开 http://127.0.0.1:3000
 
-# 方式2：局域网访问
+# 方式3：局域网访问
 node server/lan-server.js
 # 浏览器打开 http://<你的局域网IP>:3002
 
-# 方式3：纯静态预览（不接 MCP）
+# 方式4：纯静态预览（不接 MCP / 不全量抓评论）
 npx serve .
 ```
 
@@ -35,7 +39,34 @@ npx serve .
 | LingXing MCP | 预留入口 | `LINGXING_MCP_KEY` |
 | VOC | 评论分析（接口） | 页面配置面板填 |
 | 本地 Excel | 市场调研、评论导入 | 页面上传 |
-| **amazon-reviews-skill** | 全量评论抓取（Show more，目标 300） | 同级目录产物，经 `/api/local/reviews` 自动合并 |
+| **amazon-reviews-skill** | 全量评论抓取（Show more，目标 300） | 本仓库内置目录 `amazon-reviews-skill/` |
+
+## 评论全量抓取（内置 Skill）
+
+本仓库已包含 `amazon-reviews-skill/`（登录态 Chrome + Show 10 more，目标约 300 条/ASIN）。
+
+路径解析优先用仓库内目录；若你仍把 Skill 放在同级外部目录，也会自动回退识别。
+
+```powershell
+# 1) 安装 Python 依赖（首次）
+cd amazon-reviews-skill
+python -m pip install -r requirements.txt
+python -m playwright install chromium
+copy accounts\pool.example.json accounts\pool.json
+# 按需编辑 pool.json 账号 id
+
+# 2) 账号登录（首次 / 过期后）
+python -m amazon_reviews.cli login --account test-us-1 --site com --channel chrome
+
+# 3) 启动竞品分析
+cd ..
+node .local_static_server.js
+# http://127.0.0.1:3000 → 数据源配置 → 评论抓取(Skill)
+```
+
+查询新 ASIN 时，若本地还没有足够评论 JSON，会自动 `POST /api/reviews/enqueue` 并拉起 Chrome Worker；页头「全量评论抓取进度」会轮询条数。抓完后再点一次查询即可刷新 AI 分析。
+
+未安装/依赖缺失时，状态与入队接口会降级提示，系统仍可用本地评论与商品页零星评论，不会整站崩溃。
 
 ## 评论数据怎么进页面
 
@@ -47,23 +78,10 @@ npx serve .
 
 前端再经 `normalizeReviewRows` / `analyzeReviewsToFields` 填到列上的 `reviewsData`（好评/差评/卖点/`rawReviews`）。
 
-同级目录 `../amazon-reviews-skill/data/reviews_{ASIN}_{site}.json` 会被 Node 桥 **优先合并**进上述接口（字段已映射，无需改前端）。
-
-配置面板新增 **「评论抓取(Skill)」**：可开关自动入队、账号、目标条数。新 ASIN 无本地 JSON 时，查询评论会 `POST /api/reviews/enqueue` 并后台拉起 Chrome Worker（需先 login）；完成后再次查询即可。
-
-```powershell
-# 1) 账号登录（首次）
-cd ..\amazon-reviews-skill
-python -m amazon_reviews.cli login --account test-us-2 --site com --channel chrome
-
-# 2) 开竞品分析（完整后端）
-cd ..\amz-competitor-analysis
-node .local_static_server.js
-# http://127.0.0.1:3000 → 数据源配置 → 评论抓取(Skill)
-```
+`amazon-reviews-skill/data/reviews_{ASIN}_{site}.json` 会被 Node 桥 **优先合并**进上述接口（字段已映射，无需改前端）。
 
 ## 部署
 
 纯静态部分可直接上传到 Netlify、Vercel、GitHub Pages、demogo.cn 等静态托管。部署说明见 `部署说明.md`。
 
-注意：`api/mcp/*` 代理路由只有本地 Node 服务提供，静态托管环境无法使用；接入真实数据源需自行部署 Node 代理。
+注意：`api/mcp/*` 代理路由只有本地 Node 服务提供，静态托管环境无法使用；接入真实数据源需自行部署 Node 代理。全量评论抓取依赖本机 Chrome + Python，不适合纯静态托管。

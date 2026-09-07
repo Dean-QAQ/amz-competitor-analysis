@@ -24,13 +24,13 @@ SITE_MAP = {
 
 
 def _skill_root() -> Path:
-    # amz-competitor-analysis/scripts -> ../../amazon-reviews-skill
+    # Prefer skill embedded in this repo; fall back to sibling checkout.
     here = Path(__file__).resolve().parent
     candidates = [
-        here.parent.parent / "amazon-reviews-skill",
         here.parent / "amazon-reviews-skill",
-        Path.cwd().parent / "amazon-reviews-skill",
+        here.parent.parent / "amazon-reviews-skill",
         Path.cwd() / "amazon-reviews-skill",
+        Path.cwd().parent / "amazon-reviews-skill",
     ]
     for path in candidates:
         if (path / "amazon_reviews" / "api.py").exists():
@@ -51,8 +51,30 @@ def _site_code(value: str) -> str:
 
 
 def cmd_enqueue(args: argparse.Namespace) -> int:
-    skill_root = Path(args.skill_root).resolve() if args.skill_root else _skill_root()
-    svc = _svc(skill_root)
+    try:
+        skill_root = Path(args.skill_root).resolve() if args.skill_root else _skill_root()
+    except SystemExit as exc:
+        print(str(exc), end="")
+        return 1
+    pool_path = skill_root / "accounts" / "pool.json"
+    if not pool_path.exists():
+        print(
+            json.dumps(
+                {
+                    "ok": False,
+                    "error": "账号池未初始化",
+                    "hint": "copy amazon-reviews-skill/accounts/pool.example.json to accounts/pool.json，再 login",
+                    "skillRoot": str(skill_root),
+                },
+                ensure_ascii=False,
+            )
+        )
+        return 1
+    try:
+        svc = _svc(skill_root)
+    except Exception as exc:
+        print(json.dumps({"ok": False, "error": str(exc), "skillRoot": str(skill_root)}, ensure_ascii=False))
+        return 1
     site = _site_code(args.site)
     task = svc.enqueue(
         args.asin,
@@ -77,12 +99,27 @@ def cmd_task(args: argparse.Namespace) -> int:
 
 
 def cmd_status(args: argparse.Namespace) -> int:
-    skill_root = Path(args.skill_root).resolve() if args.skill_root else _skill_root()
-    svc = _svc(skill_root)
+    try:
+        skill_root = Path(args.skill_root).resolve() if args.skill_root else _skill_root()
+    except SystemExit as exc:
+        print(str(exc), end="")
+        return 1
     asin = args.asin.strip().upper()
     site = _site_code(args.site)
     data_path = skill_root / "data" / f"reviews_{asin}_{site}.json"
-    tasks = [t.to_dict() for t in svc.list_tasks(asin=asin, limit=20)]
+    pool_path = skill_root / "accounts" / "pool.json"
+    tasks = []
+    needs_setup = not pool_path.exists()
+    setup_hint = ""
+    if needs_setup:
+        setup_hint = "copy amazon-reviews-skill/accounts/pool.example.json to accounts/pool.json，再执行 login"
+    else:
+        try:
+            svc = _svc(skill_root)
+            tasks = [t.to_dict() for t in svc.list_tasks(asin=asin, limit=20)]
+        except Exception as exc:
+            needs_setup = True
+            setup_hint = str(exc)
     count = 0
     if data_path.exists():
         try:
@@ -101,6 +138,9 @@ def cmd_status(args: argparse.Namespace) -> int:
                 "resultPath": str(data_path),
                 "tasks": tasks,
                 "skillRoot": str(skill_root),
+                "skillInstalled": True,
+                "needsSetup": needs_setup,
+                "setupHint": setup_hint,
             },
             ensure_ascii=False,
         )

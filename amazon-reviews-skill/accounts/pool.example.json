@@ -1,0 +1,14 @@
+{
+  "accounts": [
+    {
+      "id": "test-us-1",
+      "label": "测试号-US",
+      "sites": ["com"],
+      "storage_state": "accounts/storage/test-us-1.com.json",
+      "profile_dir": "accounts/profiles/test-us-1.com",
+      "enabled": true,
+      "status": "healthy",
+      "notes": "持久 Chrome 配置在 profile_dir；测试可只用一个号"
+    }
+  ]
+}
