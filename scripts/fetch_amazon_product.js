@@ -9,13 +9,33 @@ const os = require("os");
 const path = require("path");
 const { URL } = require("url");
 
+const SITE_DOMAINS = { US: "amazon.com", CA: "amazon.ca", UK: "amazon.co.uk", DE: "amazon.de", AU: "amazon.com.au", JP: "amazon.co.jp" };
+function normalizeSite(site) {
+  const value = String(site || "US").trim().toUpperCase();
+  if (value === "GB") return "UK";
+  return SITE_DOMAINS[value] ? value : "US";
+}
+function siteDomain(site) {
+  return SITE_DOMAINS[normalizeSite(site)] || SITE_DOMAINS.US;
+}
+function parseSiteArg(argv) {
+  const args = Array.isArray(argv) ? argv.slice(2) : [];
+  const eqArg = args.find((item) => /^--site=/i.test(String(item || "")));
+  if (eqArg) return normalizeSite(String(eqArg).split("=").slice(1).join("="));
+  const idx = args.findIndex((item) => String(item || "").toLowerCase() === "--site");
+  if (idx >= 0 && args[idx + 1]) return normalizeSite(args[idx + 1]);
+  if (args[1] && /^[A-Z]{2}$/i.test(String(args[1]).trim())) return normalizeSite(args[1]);
+  return "US";
+}
+
 const asin = String(process.argv[2] || "").trim().toUpperCase();
 if (!/^[A-Z0-9]{10}$/.test(asin)) {
   console.log(JSON.stringify({ found: false, error: "ASIN 格式无效" }));
   process.exit(0);
 }
 
-const target = new URL("https://www.amazon.com/dp/" + asin);
+const site = parseSiteArg(process.argv);
+const target = new URL("https://www." + siteDomain(site) + "/dp/" + asin);
 const HEADERS = {
   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
   "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -325,6 +345,8 @@ function fetchViaCurl(proxyUrl) {
   const sellingPoints = extractFeatureBullets(html);
   console.log(JSON.stringify({
     found: !!(imageUrl || title),
+    site,
+    marketplace: site,
     imageUrl, title, rating, reviewCount, brand, price,
     sellingPoints,
     reviews,

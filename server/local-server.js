@@ -7,6 +7,21 @@ const root = __dirname;
 const scanRoot = path.resolve(root, "..");
 const codexConfigPath = path.join(process.env.USERPROFILE || "", ".codex", "config.toml");
 
+const AMAZON_SITE_DOMAINS = {
+  US: "amazon.com",
+  CA: "amazon.ca",
+  UK: "amazon.co.uk",
+  DE: "amazon.de",
+  AU: "amazon.com.au",
+  JP: "amazon.co.jp",
+};
+
+function normalizeMarketplaceSite(site) {
+  const value = String(site || "US").trim().toUpperCase();
+  if (value === "GB") return "UK";
+  return AMAZON_SITE_DOMAINS[value] ? value : "US";
+}
+
 /* 密钥从 .env.local 读取，避免真实 Key 硬编码进仓库。
  * 本地运行时请把 .env.local 放在本文件同级目录（不提交到 Git）。 */
 try {
@@ -41,6 +56,7 @@ const mime = {
 };
 
 const localDataCache = new Map();
+const PORT = Number(process.env.PORT || 3000);
 
 const XIYOU_MCP_URL = "https://mcp.xydc.com/mcp";
 const XIYOU_MCP_KEY = process.env.XIYOU_MCP_KEY || "";
@@ -51,22 +67,66 @@ const LINGXING_MCP_URL = "https://openmcp.lingxing.com/mcp-servers/lingxing-mcp"
 let LINGXING_MCP_KEY = process.env.LINGXING_MCP_KEY || "";
 
 function readSorftimeUrl() {
-  const raw = fs.readFileSync(codexConfigPath, "utf8");
+  let raw = "";
+  try {
+    raw = fs.readFileSync(codexConfigPath, "utf8");
+  } catch (err) {
+    return "https://mcp.sorftime.com";
+  }
   const match = raw.match(/^\[mcp_servers\."Sorftime-MCP"\][\s\S]*?^url\s*=\s*"([^"]+)"/m);
-  if (!match) throw new Error("Sorftime-MCP config was not found");
+  if (!match) return "https://mcp.sorftime.com";
   return match[1];
+}
+
+function headerText(req, name) {
+  const value = req.headers[String(name || "").toLowerCase()];
+  return Array.isArray(value) ? String(value[0] || "").trim() : String(value || "").trim();
+}
+
+function bearerFromAuthorization(req) {
+  const auth = headerText(req, "authorization");
+  const match = auth.match(/^Bearer\s+(.+)$/i);
+  return match ? normalizeMcpToken(match[1]) : "";
+}
+
+function clientMcpKey(req, headerName) {
+  return normalizeMcpToken(headerText(req, headerName)) || bearerFromAuthorization(req);
+}
+
+function normalizeMcpToken(value) {
+  let text = String(value || "").trim();
+  if (!text) return "";
+  text = text.replace(/^["']|["']$/g, "").trim();
+  const headerMatch = text.match(/^Authorization\s*:\s*Bearer\s+(.+)$/i);
+  if (headerMatch) text = headerMatch[1].trim();
+  return text.replace(/^Bearer\s+/i, "").replace(/^["']|["']$/g, "").trim();
+}
+
+function sorftimeUrlWithClientKey(baseUrl, key) {
+  const url = new URL(String(baseUrl || "https://mcp.sorftime.com"));
+  if (key) url.searchParams.set("key", key);
+  return url.toString();
+}
+
+function remoteMcpUrlWithClientKey(baseUrl, key) {
+  const url = new URL(String(baseUrl || ""));
+  if (key && !url.searchParams.get("key")) url.searchParams.set("key", key);
+  return url.toString();
 }
 
 async function proxyXiyouMcp(req, res) {
   try {
     const body = await readBody(req);
-    const upstream = await fetch(XIYOU_MCP_URL, {
+    const key = clientMcpKey(req, "x-xiyou-key") || XIYOU_MCP_KEY;
+    const targetUrl = XIYOU_MCP_URL;
+    const headers = {
+      "Content-Type": req.headers["content-type"] || "application/json",
+      "Accept": req.headers.accept || "application/json, text/event-stream",
+    };
+    if (key) headers.Authorization = "Bearer " + key;
+    const upstream = await fetch(targetUrl, {
       method: "POST",
-      headers: {
-        "Content-Type": req.headers["content-type"] || "application/json",
-        "Accept": req.headers.accept || "application/json, text/event-stream",
-        "Authorization": "Bearer " + XIYOU_MCP_KEY,
-      },
+      headers,
       body,
     });
     const text = await upstream.text();
@@ -82,15 +142,17 @@ async function proxyXiyouMcp(req, res) {
 
 async function proxySorftimeMcp(req, res) {
   try {
-    const targetUrl = readSorftimeUrl();
+    const clientKey = clientMcpKey(req, "x-sorftime-key");
+    const targetUrl = sorftimeUrlWithClientKey(readSorftimeUrl(), clientKey);
     const body = await readBody(req);
+    const headers = {
+      "Content-Type": req.headers["content-type"] || "application/json",
+      "Accept": req.headers.accept || "application/json, text/event-stream",
+    };
+    if (!clientKey && SORFTIME_MCP_AUTH) headers.Authorization = SORFTIME_MCP_AUTH;
     const upstream = await fetch(targetUrl, {
       method: "POST",
-      headers: {
-        "Content-Type": req.headers["content-type"] || "application/json",
-        "Accept": req.headers.accept || "application/json, text/event-stream",
-        "Authorization": SORFTIME_MCP_AUTH,
-      },
+      headers,
       body,
     });
     const text = await upstream.text();
@@ -108,7 +170,7 @@ async function proxySifMcp(req, res) {
   try {
     const body = await readBody(req);
     let key = SIF_MCP_KEY;
-    const clientKey = req.headers["x-sif-key"] || req.headers["secret-key"];
+    const clientKey = req.headers["x-sif-key"] || req.headers["secret-key"] || bearerFromAuthorization(req);
     if (typeof clientKey === "string" && clientKey.trim()) key = clientKey.trim();
     const upstream = await fetch(SIF_MCP_URL, {
       method: "POST",
@@ -134,7 +196,7 @@ async function proxyLingXingMcp(req, res) {
   try {
     const body = await readBody(req);
     let key = LINGXING_MCP_KEY;
-    const clientKey = req.headers["x-lingxing-key"];
+    const clientKey = req.headers["x-lingxing-key"] || bearerFromAuthorization(req);
     if (typeof clientKey === "string" && clientKey.trim()) key = clientKey.trim();
     const headers = {
       "Content-Type": req.headers["content-type"] || "application/json",
@@ -875,6 +937,7 @@ function serveLocalMarketResearch(url, res) {
 function serveLocalReviews(url, res) {
   try {
     const asin = String(url.searchParams.get("asin") || "").trim().toUpperCase();
+    const site = normalizeMarketplaceSite(url.searchParams.get("site") || "US");
     const fileOverride = String(url.searchParams.get("file") || "").trim();
     const limit = Number(url.searchParams.get("limit") || 0) || 0;
     const { buildLocalReviewsResponse } = require("./amazon-reviews-bridge");
@@ -885,6 +948,7 @@ function serveLocalReviews(url, res) {
         scanRoot,
         root,
         asin,
+        site,
         fileOverride,
         limit,
         getLocalData,
@@ -1112,14 +1176,17 @@ function serveReviewsStatus(url, res) {
 
 async function proxySorftimeMcp(req, res) {
   try {
-    const targetUrl = readSorftimeUrl();
+    const clientKey = clientMcpKey(req, "x-sorftime-key");
+    const targetUrl = sorftimeUrlWithClientKey(readSorftimeUrl(), clientKey);
     const body = await readBody(req);
+    const headers = {
+      "Content-Type": req.headers["content-type"] || "application/json",
+      "Accept": req.headers.accept || "application/json, text/event-stream",
+    };
+    if (!clientKey && SORFTIME_MCP_AUTH) headers.Authorization = SORFTIME_MCP_AUTH;
     const upstream = await fetch(targetUrl, {
       method: "POST",
-      headers: {
-        "Content-Type": req.headers["content-type"] || "application/json",
-        "Accept": req.headers.accept || "application/json, text/event-stream",
-      },
+      headers,
       body,
     });
     const text = await upstream.text();
@@ -1252,7 +1319,7 @@ http.createServer(async (req, res) => {
     res.writeHead(200, { "Content-Type": mime[path.extname(filePath).toLowerCase()] || "application/octet-stream" });
     res.end(data);
   });
-}).listen(3000, "127.0.0.1", () => {
-  console.log("Serving " + root + " at http://127.0.0.1:3000");
+}).listen(PORT, "127.0.0.1", () => {
+  console.log("Serving " + root + " at http://127.0.0.1:" + PORT);
   console.log("Local file scan root: " + scanRoot);
 });

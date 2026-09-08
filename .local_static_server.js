@@ -8,6 +8,30 @@ const root = __dirname;
 const scanRoot = path.resolve(root, "..");
 const codexConfigPath = path.join(process.env.USERPROFILE || "", ".codex", "config.toml");
 
+const GOOGLE_TRANSLATE_HOSTS = ["translate.google.com", "translate.google.cn"];
+const translationCache = new Map();
+const siteLanguages = {
+  US: "en", CA: "en", UK: "en", AU: "en", DE: "de", JP: "ja",
+};
+const AMAZON_SITE_DOMAINS = {
+  US: "amazon.com",
+  CA: "amazon.ca",
+  UK: "amazon.co.uk",
+  DE: "amazon.de",
+  AU: "amazon.com.au",
+  JP: "amazon.co.jp",
+};
+
+function normalizeMarketplaceSite(site) {
+  const value = String(site || "US").trim().toUpperCase();
+  if (value === "GB") return "UK";
+  return AMAZON_SITE_DOMAINS[value] ? value : "US";
+}
+
+function amazonDomainForSite(site) {
+  return AMAZON_SITE_DOMAINS[normalizeMarketplaceSite(site)] || AMAZON_SITE_DOMAINS.US;
+}
+
 /* 亚马逊商品页抓取：用于在 MCP 未返回主图时兜底。只抓公开商品页 HTML 里的真实图片字段，
  * 不访问评论页（评论页需要登录）。走本机代理 127.0.0.1:7897，超时 20 秒。 */
 /* 已废弃：模板字符串转义易错，改为调用 scripts/fetch_amazon_product.js 独立脚本文件 */
@@ -21,7 +45,7 @@ if (!/^[A-Z0-9]{10}$/.test(asin)) {
   console.log(JSON.stringify({ found: false, error: "ASIN 格式无效" }));
   process.exit(0);
 }
-const target = new URL("https://www.amazon.com/dp/" + asin);
+const target = new URL("https://www.amazon." + "com/dp/" + asin);
 const options = {
   hostname: target.hostname,
   path: target.pathname,
@@ -128,6 +152,7 @@ const mime = {
 };
 
 const localDataCache = new Map();
+const PORT = Number(process.env.PORT || 3000);
 
 const XIYOU_MCP_URL = "https://mcp.xydc.com/mcp";
 const XIYOU_MCP_KEY = process.env.XIYOU_MCP_KEY || "";
@@ -147,16 +172,55 @@ function readSorftimeUrl() {
   return "https://mcp.sorftime.com";
 }
 
+function headerText(req, name) {
+  const value = req.headers[String(name || "").toLowerCase()];
+  return Array.isArray(value) ? String(value[0] || "").trim() : String(value || "").trim();
+}
+
+function bearerFromAuthorization(req) {
+  const auth = headerText(req, "authorization");
+  const match = auth.match(/^Bearer\s+(.+)$/i);
+  return match ? normalizeMcpToken(match[1]) : "";
+}
+
+function clientMcpKey(req, headerName) {
+  return normalizeMcpToken(headerText(req, headerName)) || bearerFromAuthorization(req);
+}
+
+function normalizeMcpToken(value) {
+  let text = String(value || "").trim();
+  if (!text) return "";
+  text = text.replace(/^["']|["']$/g, "").trim();
+  const headerMatch = text.match(/^Authorization\s*:\s*Bearer\s+(.+)$/i);
+  if (headerMatch) text = headerMatch[1].trim();
+  return text.replace(/^Bearer\s+/i, "").replace(/^["']|["']$/g, "").trim();
+}
+
+function sorftimeUrlWithClientKey(baseUrl, key) {
+  const url = new URL(String(baseUrl || "https://mcp.sorftime.com"));
+  if (key) url.searchParams.set("key", key);
+  return url.toString();
+}
+
+function remoteMcpUrlWithClientKey(baseUrl, key) {
+  const url = new URL(String(baseUrl || ""));
+  if (key && !url.searchParams.get("key")) url.searchParams.set("key", key);
+  return url.toString();
+}
+
 async function proxyXiyouMcp(req, res) {
   try {
     const body = await readBody(req);
-    const upstream = await fetch(XIYOU_MCP_URL, {
+    const key = clientMcpKey(req, "x-xiyou-key") || XIYOU_MCP_KEY;
+    const targetUrl = XIYOU_MCP_URL;
+    const headers = {
+      "Content-Type": req.headers["content-type"] || "application/json",
+      "Accept": req.headers.accept || "application/json, text/event-stream",
+    };
+    if (key) headers.Authorization = "Bearer " + key;
+    const upstream = await fetch(targetUrl, {
       method: "POST",
-      headers: {
-        "Content-Type": req.headers["content-type"] || "application/json",
-        "Accept": req.headers.accept || "application/json, text/event-stream",
-        "Authorization": "Bearer " + XIYOU_MCP_KEY,
-      },
+      headers,
       body,
     });
     const text = await upstream.text();
@@ -172,15 +236,17 @@ async function proxyXiyouMcp(req, res) {
 
 async function proxySorftimeMcp(req, res) {
   try {
-    const targetUrl = readSorftimeUrl();
+    const clientKey = clientMcpKey(req, "x-sorftime-key");
+    const targetUrl = sorftimeUrlWithClientKey(readSorftimeUrl(), clientKey);
     const body = await readBody(req);
+    const headers = {
+      "Content-Type": req.headers["content-type"] || "application/json",
+      "Accept": req.headers.accept || "application/json, text/event-stream",
+    };
+    if (!clientKey && SORFTIME_MCP_AUTH) headers.Authorization = SORFTIME_MCP_AUTH;
     const upstream = await fetch(targetUrl, {
       method: "POST",
-      headers: {
-        "Content-Type": req.headers["content-type"] || "application/json",
-        "Accept": req.headers.accept || "application/json, text/event-stream",
-        "Authorization": SORFTIME_MCP_AUTH,
-      },
+      headers,
       body,
     });
     const text = await upstream.text();
@@ -198,7 +264,7 @@ async function proxySifMcp(req, res) {
   try {
     const body = await readBody(req);
     let key = SIF_MCP_KEY;
-    const clientKey = req.headers["x-sif-key"] || req.headers["secret-key"];
+    const clientKey = req.headers["x-sif-key"] || req.headers["secret-key"] || bearerFromAuthorization(req);
     if (typeof clientKey === "string" && clientKey.trim()) key = clientKey.trim();
     const upstream = await fetch(SIF_MCP_URL, {
       method: "POST",
@@ -224,7 +290,7 @@ async function proxyLingXingMcp(req, res) {
   try {
     const body = await readBody(req);
     let key = LINGXING_MCP_KEY;
-    const clientKey = req.headers["x-lingxing-key"];
+    const clientKey = req.headers["x-lingxing-key"] || bearerFromAuthorization(req);
     if (typeof clientKey === "string" && clientKey.trim()) key = clientKey.trim();
     const headers = {
       "Content-Type": req.headers["content-type"] || "application/json",
@@ -1300,13 +1366,14 @@ function getLocalData(mode, asin, fileOverride, limit) {
   return data;
 }
 
-function fetchAmazonProductPage(asin) {
+function fetchAmazonProductPage(asin, site) {
   /* v3：脚本新增 sellingPoints 提取后升级缓存键，避免旧缓存缺少五点描述字段 */
-  const cacheKey = "amz-page-v3|" + asin;
+  const normalizedSite = normalizeMarketplaceSite(site || "US");
+  const cacheKey = "amz-page-v3|" + normalizedSite + "|" + asin;
   const cached = localDataCache.get(cacheKey);
   if (cached && Date.now() - cached.ts < 30 * 60 * 1000) return cached.data;
   const scriptPath = path.join(root, "scripts", "fetch_amazon_product.js");
-  const res = spawnSync(process.execPath, [scriptPath, asin], { encoding: "utf8", timeout: 30000, maxBuffer: 40 * 1024 * 1024 });
+  const res = spawnSync(process.execPath, [scriptPath, asin, "--site", normalizedSite], { encoding: "utf8", timeout: 30000, maxBuffer: 40 * 1024 * 1024 });
   if (res.error) throw new Error(res.error.message);
   const stdout = String(res.stdout || "").trim();
   if (!stdout) throw new Error(res.stderr || "亚马逊抓取脚本无输出");
@@ -1314,7 +1381,7 @@ function fetchAmazonProductPage(asin) {
   if (data && data.found) localDataCache.set(cacheKey, { ts: Date.now(), data });
   /* 亚马逊商品页评论用独立缓存键，30 分钟内直接复用，避免重复抓取 */
   if (data && data.found && Array.isArray(data.reviews) && data.reviews.length) {
-    const reviewKey = "amz-page-reviews|" + asin;
+    const reviewKey = "amz-page-reviews|" + normalizedSite + "|" + asin;
     if (!localDataCache.has(reviewKey)) localDataCache.set(reviewKey, { ts: Date.now(), data: data.reviews });
   }
   return data;
@@ -1326,6 +1393,142 @@ function writeJson(res, status, payload) {
     "Cache-Control": "no-store",
   });
   res.end(JSON.stringify(payload));
+}
+
+function decodeGoogleTranslateResponse(text) {
+  /* Google 轻量端点返回 JS 数组字符串，这里不 eval，只提取安全字符串数组。 */
+  const payload = JSON.parse(text);
+  if (!Array.isArray(payload) || !Array.isArray(payload[0])) return "";
+  return payload[0].map((row) => Array.isArray(row) && typeof row[0] === "string" ? row[0] : "").join("");
+}
+
+async function requestGoogleTranslateSegment(text, sourceLang, hostIndex = 0) {
+  if (!text) return "";
+  const source = sourceLang && sourceLang !== "zh" ? sourceLang : "auto";
+  const host = GOOGLE_TRANSLATE_HOSTS[hostIndex % GOOGLE_TRANSLATE_HOSTS.length];
+  const endpoint = new URL("https://" + host + "/translate_a/single?client=gtx&dt=t&sl=" +
+    encodeURIComponent(source) + "&tl=zh-CN");
+  const body = new URLSearchParams({ q: text }).toString();
+  const requestOptions = {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36",
+      "Accept": "*/*",
+    },
+    body,
+    signal: AbortSignal.timeout(12000),
+  };
+  try {
+    const upstream = await fetch(endpoint, requestOptions);
+    if (!upstream.ok) throw new Error("HTTP " + upstream.status);
+    const raw = await upstream.text();
+    const translated = decodeGoogleTranslateResponse(raw);
+    if (!translated) throw new Error("翻译响应为空");
+    return translated;
+  } catch (err) {
+    if (hostIndex + 1 < GOOGLE_TRANSLATE_HOSTS.length) {
+      return requestGoogleTranslateSegment(text, sourceLang, hostIndex + 1);
+    }
+    throw err;
+  }
+}
+
+async function translateReviewsToChinese(items, sourceLang) {
+  const rows = Array.isArray(items) ? items : [];
+  const textForItem = (item) => typeof item === "string"
+    ? item
+    : [
+      item && typeof item.title === "string" ? item.title : "",
+      item && typeof item.content === "string" ? item.content : "",
+      item && typeof item.text === "string" ? item.text : "",
+      item && typeof item.comment === "string" ? item.comment : "",
+      item && typeof item.body === "string" ? item.body : "",
+    ].filter(Boolean).join("\n");
+  const cloneTranslatedItem = (item, translated) => {
+    if (typeof item === "string") return translated || item;
+    return Object.assign({}, item, {
+      content: translated || item.content,
+      text: translated || item.text || item.content,
+      body: translated || item.body || item.content,
+      reviewText: translated || item.reviewText || item.content,
+      comment: translated || item.comment || item.content,
+      originalContent: item.originalContent || item.content || item.text || item.body || item.comment || "",
+      originalText: item.originalText || item.text || item.content || item.body || item.comment || "",
+      translated: true,
+    });
+  };
+  if (rows.length && rows.length <= 20) {
+    const translatedByIndex = new Map();
+    for (let index = 0; index < rows.length; index++) {
+      const clean = String(textForItem(rows[index]) || "").replace(/\r?\n/g, " ").trim();
+      if (!clean) continue;
+      try {
+        const translated = await requestGoogleTranslateSegment(clean, "auto");
+        if (translated && translated.trim() && translated.trim() !== clean) translatedByIndex.set(index, translated.trim());
+      } catch (err) {
+        /* 小批量逐条翻译失败时保留原文 */
+      }
+    }
+    return rows.map((item, index) => translatedByIndex.has(index) ? cloneTranslatedItem(item, translatedByIndex.get(index)) : item);
+  }
+  const chunks = [];
+  let current = [];
+  let length = 0;
+  const separator = "\n@@999999@@\n";
+  rows.forEach((item, index) => {
+    const raw = typeof item === "string"
+      ? item
+      : (item && typeof item.content === "string" ? item.content : "");
+    const clean = String(raw || "").replace(/\r?\n/g, " ").trim();
+    if (!clean) return;
+    if (length && length + separator.length + clean.length > 3600) {
+      chunks.push(current);
+      current = [];
+      length = 0;
+    }
+    current.push("@@" + (index >= 0 ? String(index) : "") + "@@" + clean);
+    length += clean.length + separator.length;
+  });
+  if (current.length) chunks.push(current);
+  const translatedByIndex = new Map();
+  for (const chunk of chunks) {
+    const text = chunk.join(separator);
+    try {
+      const translated = await requestGoogleTranslateSegment(text, sourceLang);
+      translated.split(/\s*@@999999@@\s*/).forEach((row) => {
+        const match = row.match(/^@@([0-9]+)@@\s*([\s\S]*)$/);
+        if (match) translatedByIndex.set(Number(match[1]), match[2].trim());
+      });
+    } catch (err) {
+      /* 单批失败不终止整份评论；这些行保留原文 */
+    }
+  }
+  return rows.map((item, index) => {
+    if (!translatedByIndex.has(index)) return item;
+    const translated = translatedByIndex.get(index);
+    if (typeof item === "string") return translated || item;
+    return Object.assign({}, item, { content: translated || item.content, originalContent: item.originalContent || item.content, translated: true });
+  });
+}
+
+async function serveTranslateReviews(req, res) {
+  try {
+    const raw = await readBody(req);
+    const body = raw ? JSON.parse(String(raw) || "{}") : {};
+    const site = normalizeMarketplaceSite(body.site || body.marketplace || "US");
+    const sourceLang = String(body.sourceLang || siteLanguages[site] || "auto");
+    const items = Array.isArray(body.reviews) ? body.reviews : (Array.isArray(body.texts) ? body.texts : []);
+    if (!items.length) {
+      writeJson(res, 200, { ok: true, translated: [], requested: 0, translatedCount: 0, sourceLang });
+      return;
+    }
+    const translated = await translateReviewsToChinese(items, sourceLang);
+    const translatedCount = translated.filter((item) => item && item.translated).length;
+    writeJson(res, 200, { ok: true, translated, requested: items.length, translatedCount, sourceLang, site });
+  } catch (err) {
+    writeJson(res, 502, { ok: false, error: err.message || String(err), translated: [] });
+  }
 }
 
 function serveLocalMarketResearch(url, res) {
@@ -1341,11 +1544,12 @@ function serveLocalMarketResearch(url, res) {
 function serveAmazonProductPage(url, res) {
   try {
     const asin = String(url.searchParams.get("asin") || "").trim().toUpperCase();
+    const site = normalizeMarketplaceSite(url.searchParams.get("site") || "US");
     if (!/^[A-Z0-9]{10}$/.test(asin)) {
       writeJson(res, 400, { found: false, error: "ASIN 格式无效" });
       return;
     }
-    const data = fetchAmazonProductPage(asin);
+    const data = fetchAmazonProductPage(asin, site);
     writeJson(res, 200, data || { found: false, error: "亚马逊页面抓取失败" });
   } catch (err) {
     writeJson(res, 500, { found: false, error: err.message || String(err) });
@@ -1360,16 +1564,315 @@ function serveAmazonPageReviews(url, res) {
       writeJson(res, 400, { reviews: [], error: "ASIN 格式无效" });
       return;
     }
-    fetchAmazonProductPage(asin);
-    const cached = localDataCache.get("amz-page-reviews|" + asin);
+    fetchAmazonProductPage(asin, site);
+    const cached = localDataCache.get("amz-page-reviews|" + site + "|" + asin);
     const reviews = cached ? cached.data : [];
-    writeJson(res, 200, { reviews, searchedFiles: 0, matchedFiles: ["amazon.com/dp/" + asin], source: "amazon-page" });
+    writeJson(res, 200, { reviews, searchedFiles: 0, matchedFiles: [amazonDomainForSite(site) + "/dp/" + asin], source: "amazon-page", site });
   } catch (err) {
     writeJson(res, 200, { reviews: [], error: err.message || String(err) });
   }
 }
 
 /* 图片代理：浏览器直连亚马逊 CDN 可能被墙，由服务端经代理抓取后转发。 */
+function decodeHtmlEntities(text) {
+  return String(text || "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, "\"")
+    .replace(/&#39;|&apos;|&rsquo;/g, "'")
+    .replace(/&ldquo;|&rdquo;/g, "\"")
+    .replace(/&mdash;|&ndash;/g, "-")
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/&#([0-9]+);/g, (_, num) => String.fromCharCode(parseInt(num, 10)));
+}
+
+function stripHtmlFragment(fragment) {
+  return decodeHtmlEntities(String(fragment || "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(?:div|p|li|tr|h\d)>/gi, "\n")
+    .replace(/<[^>]+>/g, ""))
+    .replace(/\r/g, "")
+    .split("\n")
+    .map((line) => line.replace(/\u00a0/g, " ").replace(/[ \t\f\v]+/g, " ").trim())
+    .filter((line, index, list) => line || (index > 0 && list[index - 1]))
+    .join("\n")
+    .trim();
+}
+
+function extractGoogleMobileTranslateText(html) {
+  const source = String(html || "");
+  const patterns = [
+    /class="result-container"[^>]*>([\s\S]*?)<\/div>/i,
+    /id="result-container"[^>]*>([\s\S]*?)<\/div>/i,
+    /class="result-container-text"[^>]*>([\s\S]*?)<\/div>/i,
+  ];
+  for (const re of patterns) {
+    const match = source.match(re);
+    if (match && match[1]) {
+      const text = stripHtmlFragment(match[1]);
+      if (text) return text;
+    }
+  }
+  return "";
+}
+
+function requestTextViaProxy(targetUrl, headers, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const req = http.request({
+      host: "127.0.0.1",
+      port: 7897,
+      method: "GET",
+      path: targetUrl.toString(),
+      headers: Object.assign({
+        "Accept-Encoding": "identity",
+        "Connection": "close",
+      }, headers || {}),
+      timeout: timeoutMs || 12000,
+    }, (res) => {
+      const chunks = [];
+      res.on("data", (c) => chunks.push(c));
+      res.on("end", () => resolve({ status: res.statusCode || 0, body: Buffer.concat(chunks).toString("utf8") }));
+    });
+    req.on("timeout", () => req.destroy(new Error("请求超时")));
+    req.on("error", reject);
+    req.end();
+  });
+}
+
+function requestTextDirect(targetUrl, headers, timeoutMs) {
+  const parsed = targetUrl instanceof URL ? targetUrl : new URL(String(targetUrl));
+  const mod = parsed.protocol === "http:" ? http : https;
+  return new Promise((resolve, reject) => {
+    const req = mod.request(parsed, {
+      method: "GET",
+      headers: Object.assign({
+        "Accept-Encoding": "identity",
+        "Connection": "close",
+      }, headers || {}),
+      timeout: timeoutMs || 12000,
+    }, (res) => {
+      const chunks = [];
+      res.on("data", (c) => chunks.push(c));
+      res.on("end", () => resolve({ status: res.statusCode || 0, body: Buffer.concat(chunks).toString("utf8") }));
+    });
+    req.on("timeout", () => req.destroy(new Error("请求超时")));
+    req.on("error", reject);
+    req.end();
+  });
+}
+
+async function requestUrlText(targetUrl, headers, timeoutMs) {
+  const url = targetUrl instanceof URL ? targetUrl : new URL(String(targetUrl));
+  let lastErr = null;
+  try {
+    const res = await fetch(url.toString(), {
+      method: "GET",
+      headers: Object.assign({
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache",
+      }, headers || {}),
+      signal: AbortSignal.timeout(timeoutMs || 12000),
+      redirect: "follow",
+    });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const text = await res.text();
+    if (text) return text;
+    lastErr = new Error("空响应");
+  } catch (err) {
+    lastErr = err;
+  }
+  try {
+    const proxied = await requestTextViaProxy(url, headers, timeoutMs || 12000);
+    if (proxied && proxied.status === 200 && proxied.body) return proxied.body;
+    lastErr = new Error("HTTP " + (proxied ? proxied.status : "0"));
+  } catch (err) {
+    lastErr = err;
+  }
+  try {
+    const direct = await requestTextDirect(url, headers, timeoutMs || 12000);
+    if (direct && direct.status === 200 && direct.body) return direct.body;
+    lastErr = new Error("HTTP " + (direct ? direct.status : "0"));
+  } catch (err) {
+    lastErr = err;
+  }
+  throw lastErr || new Error("请求失败");
+}
+
+async function requestGoogleTranslateSegment(text, sourceLang, hostIndex = 0) {
+  if (!text) return "";
+  const source = sourceLang && sourceLang !== "zh" ? sourceLang : "auto";
+  const cacheKey = [source, text].join("\u0000");
+  if (translationCache.has(cacheKey)) return translationCache.get(cacheKey);
+  const host = GOOGLE_TRANSLATE_HOSTS[hostIndex % GOOGLE_TRANSLATE_HOSTS.length];
+  const endpoint = new URL("https://" + host + "/m?sl=" + encodeURIComponent(source) +
+    "&tl=zh-CN&hl=zh-CN&ie=UTF-8&oe=UTF-8&q=" + encodeURIComponent(text));
+  const headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+    "Referer": "https://translate.google.com/",
+  };
+  try {
+    const raw = await requestUrlText(endpoint, headers, 15000);
+    const translated = extractGoogleMobileTranslateText(raw);
+    const sameAsInput = String(translated || "").trim() === String(text || "").trim();
+    if (sameAsInput && source !== "auto") {
+      return requestGoogleTranslateSegment(text, "auto", hostIndex + 1);
+    }
+    if (!translated) throw new Error("Google 翻译页面未返回结果");
+    translationCache.set(cacheKey, translated);
+    return translated;
+  } catch (err) {
+    if (hostIndex + 1 < GOOGLE_TRANSLATE_HOSTS.length) {
+      return requestGoogleTranslateSegment(text, sourceLang, hostIndex + 1);
+    }
+    throw err;
+  }
+}
+
+async function translateReviewsToChinese(items, sourceLang) {
+  const rows = Array.isArray(items) ? items : [];
+  const textForItem = (item) => typeof item === "string"
+    ? item
+    : [
+      item && typeof item.title === "string" ? item.title : "",
+      item && typeof item.content === "string" ? item.content : "",
+      item && typeof item.text === "string" ? item.text : "",
+      item && typeof item.comment === "string" ? item.comment : "",
+      item && typeof item.body === "string" ? item.body : "",
+    ].filter(Boolean).join("\n");
+  const cloneTranslatedItem = (item, translated) => {
+    if (typeof item === "string") return translated || item;
+    return Object.assign({}, item, {
+      content: translated || item.content,
+      text: translated || item.text || item.content,
+      body: translated || item.body || item.content,
+      reviewText: translated || item.reviewText || item.content,
+      comment: translated || item.comment || item.content,
+      originalContent: item.originalContent || item.content || item.text || item.body || item.comment || "",
+      originalText: item.originalText || item.text || item.content || item.body || item.comment || "",
+      translated: true,
+    });
+  };
+  if (rows.length && rows.length <= 20) {
+    const translatedByIndex = new Map();
+    for (let index = 0; index < rows.length; index++) {
+      const clean = String(textForItem(rows[index]) || "").replace(/\r?\n/g, " ").trim();
+      if (!clean) continue;
+      try {
+        const translated = await requestGoogleTranslateSegment(clean, "auto");
+        if (translated && translated.trim() && translated.trim() !== clean) translatedByIndex.set(index, translated.trim());
+      } catch (err) {
+        /* 小批量逐条翻译失败时保留原文 */
+      }
+    }
+    return rows.map((item, index) => translatedByIndex.has(index) ? cloneTranslatedItem(item, translatedByIndex.get(index)) : item);
+  }
+  const chunks = [];
+  let current = [];
+  let length = 0;
+  const separator = "\n@@999999@@\n";
+  rows.forEach((item, index) => {
+    const raw = typeof item === "string"
+      ? item
+      : [
+        item && typeof item.title === "string" ? item.title : "",
+        item && typeof item.content === "string" ? item.content : "",
+        item && typeof item.text === "string" ? item.text : "",
+        item && typeof item.comment === "string" ? item.comment : "",
+        item && typeof item.body === "string" ? item.body : "",
+      ].filter(Boolean).join("\n");
+    const clean = String(raw || "").replace(/\r?\n/g, " ").trim();
+    if (!clean) return;
+    if (length && length + separator.length + clean.length > 3600) {
+      chunks.push(current);
+      current = [];
+      length = 0;
+    }
+    current.push("@@" + (index >= 0 ? String(index) : "") + "@@" + clean);
+    length += clean.length + separator.length;
+  });
+  if (current.length) chunks.push(current);
+  const translatedByIndex = new Map();
+  for (const chunk of chunks) {
+    const text = chunk.join(separator);
+    try {
+      const translated = await requestGoogleTranslateSegment(text, sourceLang);
+      translated.split(/\s*@@999999@@\s*/).forEach((row) => {
+        const match = row.match(/^@@([0-9]+)@@\s*([\s\S]*)$/);
+        if (match) translatedByIndex.set(Number(match[1]), match[2].trim());
+      });
+    } catch (err) {
+      /* 单批失败不终止整批评论；保留原文继续分析 */
+    }
+  }
+  return rows.map((item, index) => {
+    if (!translatedByIndex.has(index)) return item;
+    const translated = translatedByIndex.get(index);
+    if (typeof item === "string") return translated || item;
+    return Object.assign({}, item, {
+      content: translated || item.content,
+      text: translated || item.text || item.content,
+      body: translated || item.body || item.content,
+      reviewText: translated || item.reviewText || item.content,
+      comment: translated || item.comment || item.content,
+      originalContent: item.originalContent || item.content || item.text || item.body || item.comment || "",
+      originalText: item.originalText || item.text || item.content || item.body || item.comment || "",
+      translated: true,
+    });
+  });
+}
+
+function runGoogleTranslateScript(text, sourceLang) {
+  const script = path.join(root, "scripts", "google_translate.py");
+  if (!fs.existsSync(script)) throw new Error("缺少 scripts/google_translate.py");
+  const payload = JSON.stringify({ text: String(text || ""), sourceLang: String(sourceLang || "auto") });
+  let lastError = "";
+  for (const exe of pythonCandidatesForReviews()) {
+    const args = /(^|[\\/])py(\.exe)?$/i.test(exe) ? ["-3", script] : [script];
+    const res = spawnSync(exe, args, {
+      input: payload,
+      encoding: "utf8",
+      timeout: 35000,
+      maxBuffer: 8 * 1024 * 1024,
+      cwd: path.dirname(script),
+      env: Object.assign({}, process.env, { PYTHONIOENCODING: "utf-8", PYTHONUNBUFFERED: "1" }),
+      windowsHide: true,
+    });
+    if (res.error) {
+      lastError = res.error.message;
+      continue;
+    }
+    const stdout = String(res.stdout || "").trim();
+    const stderr = String(res.stderr || "").trim();
+    if (!stdout) {
+      lastError = stderr || ("python exit " + res.status);
+      continue;
+    }
+    try {
+      const data = JSON.parse(stdout.split(/\r?\n/).filter(Boolean).pop());
+      if (data && data.ok && data.translated) return data.translated;
+      lastError = (data && data.error) || stdout.slice(0, 200);
+    } catch (err) {
+      lastError = "invalid translate json: " + stdout.slice(0, 200);
+    }
+  }
+  throw new Error(lastError || "Google 翻译失败");
+}
+
+async function requestGoogleTranslateSegment(text, sourceLang) {
+  if (!text) return "";
+  const source = sourceLang && sourceLang !== "zh" ? sourceLang : "auto";
+  const cacheKey = ["python-google-mobile", source, text].join("\u0000");
+  if (translationCache.has(cacheKey)) return translationCache.get(cacheKey);
+  const translated = runGoogleTranslateScript(text, source);
+  if (!translated) throw new Error("Google 翻译返回为空");
+  translationCache.set(cacheKey, translated);
+  return translated;
+}
+
 const IMAGE_ALLOWED_HOSTS = new Set([
   "m.media-amazon.com",
   "images-na.ssl-images-amazon.com",
@@ -1426,6 +1929,7 @@ function serveImageProxy(url, res) {
 function serveLocalReviews(url, res) {
   try {
     const asin = String(url.searchParams.get("asin") || "").trim().toUpperCase();
+    const site = normalizeMarketplaceSite(url.searchParams.get("site") || "US");
     const fileOverride = String(url.searchParams.get("file") || "").trim();
     const limit = Number(url.searchParams.get("limit") || 0) || 0;
     const { buildLocalReviewsResponse } = require("./server/amazon-reviews-bridge");
@@ -1436,6 +1940,7 @@ function serveLocalReviews(url, res) {
         scanRoot,
         root,
         asin,
+        site,
         fileOverride,
         limit,
         getLocalData,
@@ -1677,13 +2182,14 @@ async function serveLocalReviewUpload(req, url, res) {
 
 async function proxySorftimeMcp(req, res) {
   try {
-    const targetUrl = readSorftimeUrl();
+    const clientKey = clientMcpKey(req, "x-sorftime-key");
+    const targetUrl = sorftimeUrlWithClientKey(readSorftimeUrl(), clientKey);
     const body = await readBody(req);
     const headers = {
       "Content-Type": req.headers["content-type"] || "application/json",
       "Accept": req.headers.accept || "application/json, text/event-stream",
     };
-    if (SORFTIME_MCP_AUTH) headers.Authorization = SORFTIME_MCP_AUTH;
+    if (!clientKey && SORFTIME_MCP_AUTH) headers.Authorization = SORFTIME_MCP_AUTH;
     const upstream = await fetch(targetUrl, {
       method: "POST",
       headers,
@@ -1802,6 +2308,16 @@ http.createServer(async (req, res) => {
     return;
   }
 
+  if (url.pathname === "/api/translate/reviews") {
+    if (req.method !== "POST") {
+      res.writeHead(405);
+      res.end("Method Not Allowed");
+      return;
+    }
+    await serveTranslateReviews(req, res);
+    return;
+  }
+
   if (url.pathname === "/api/mcp/sorftime") {
     if (req.method !== "POST") {
       res.writeHead(405);
@@ -1862,7 +2378,7 @@ http.createServer(async (req, res) => {
     res.writeHead(200, headers);
     res.end(data);
   });
-}).listen(3000, "127.0.0.1", () => {
-  console.log("Serving " + root + " at http://127.0.0.1:3000");
+}).listen(PORT, () => {
+  console.log("Serving " + root + " at http://localhost:" + PORT + " and http://127.0.0.1:" + PORT);
   console.log("Local file scan root: " + scanRoot);
 });

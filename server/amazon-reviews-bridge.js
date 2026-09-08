@@ -25,6 +25,25 @@ function resolveSkillDataDirs(scanRoot, root) {
   return out;
 }
 
+function siteToSkillCode(site) {
+  const map = {
+    US: "com",
+    UK: "co.uk",
+    GB: "co.uk",
+    DE: "de",
+    FR: "fr",
+    IT: "it",
+    ES: "es",
+    JP: "co.jp",
+    CA: "ca",
+    AU: "com.au",
+    MX: "com.mx",
+    IN: "in",
+  };
+  const raw = String(site || "US").trim();
+  return (map[raw.toUpperCase()] || raw.toLowerCase().replace(/^\./, "") || "com").toLowerCase();
+}
+
 function reviewKey(row) {
   const id = String(row.review_id || row.reviewId || "").trim().toUpperCase();
   if (id) return "id:" + id;
@@ -63,9 +82,10 @@ function mapSkillReview(item, asin, sourceFile) {
  * Load crawl outputs: data/reviews_{ASIN}_{site}.json
  * @returns {{ reviews: object[], matchedFiles: string[], searchedFiles: number, source: string, count: number, unique_review_ids: number } | null}
  */
-function loadSkillReviews({ scanRoot, root, asin, limit }) {
+function loadSkillReviews({ scanRoot, root, asin, site, limit }) {
   const needle = String(asin || "").trim().toUpperCase();
   if (!/^[A-Z0-9]{10}$/.test(needle)) return null;
+  const expectedSite = siteToSkillCode(site || "US");
 
   const dirs = resolveSkillDataDirs(scanRoot, root);
   if (!dirs.length) return null;
@@ -87,6 +107,9 @@ function loadSkillReviews({ scanRoot, root, asin, limit }) {
       if (!/^reviews_/i.test(name) || !name.toLowerCase().endsWith(".json")) continue;
       searchedFiles += 1;
       if (!name.toUpperCase().includes(needle)) continue;
+      const fileSiteMatch = name.match(/^reviews_[A-Z0-9]{10}_(.+)\.json$/i);
+      const fileSite = fileSiteMatch && fileSiteMatch[1] ? fileSiteMatch[1].toLowerCase() : "";
+      if (expectedSite && fileSite && fileSite !== expectedSite) continue;
       const fp = path.join(dir, name);
       let data;
       try {
@@ -175,8 +198,45 @@ function mergeReviewsPreferSkill(skillPayload, localPayload, limit) {
   });
 }
 
-function buildLocalReviewsResponse({ scanRoot, root, asin, fileOverride, limit, getLocalData }) {
-  const skill = loadSkillReviews({ scanRoot, root, asin, limit: 0 });
+function siteCodeFromReviewFile(value, asin) {
+  const text = String(value || "").replace(/\\/g, "/");
+  const needle = String(asin || "").trim().toUpperCase();
+  const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp("reviews_" + escaped + "_([^/]+)\\.json$", "i");
+  const m = text.match(re);
+  return m && m[1] ? m[1].toLowerCase() : "";
+}
+
+function filterLocalPayloadBySite(localPayload, asin, site) {
+  const local = localPayload && typeof localPayload === "object" ? Object.assign({}, localPayload) : { reviews: [] };
+  const expectedSite = siteToSkillCode(site || "US");
+  const keepFile = (file) => {
+    const fileSite = siteCodeFromReviewFile(file, asin);
+    return !fileSite || fileSite === expectedSite;
+  };
+  if (Array.isArray(local.reviews)) {
+    local.reviews = local.reviews.filter((row) => {
+      const fileSite = siteCodeFromReviewFile(row && (row.sourceFile || row.file || row.path), asin);
+      return !fileSite || fileSite === expectedSite;
+    });
+  }
+  if (Array.isArray(local.rows)) {
+    local.rows = local.rows.filter((row) => {
+      const fileSite = siteCodeFromReviewFile(row && (row.sourceFile || row.file || row.path), asin);
+      return !fileSite || fileSite === expectedSite;
+    });
+  }
+  if (Array.isArray(local.matchedFiles)) {
+    local.matchedFiles = local.matchedFiles.filter(keepFile);
+  }
+  const reviewCount = Array.isArray(local.reviews) ? local.reviews.length : (Array.isArray(local.rows) ? local.rows.length : 0);
+  local.rawCount = reviewCount;
+  local.duplicateCount = Math.max(0, Number(local.duplicateCount) || 0);
+  return local;
+}
+
+function buildLocalReviewsResponse({ scanRoot, root, asin, site, fileOverride, limit, getLocalData }) {
+  const skill = loadSkillReviews({ scanRoot, root, asin, site, limit: 0 });
   // Prefer skill dump; skip directory scan merge to avoid double-counting the same JSON
   // (scan path often lacks review_id so dedupe by signature fails).
   if (skill && Array.isArray(skill.reviews) && skill.reviews.length) {
@@ -199,7 +259,7 @@ function buildLocalReviewsResponse({ scanRoot, root, asin, fileOverride, limit, 
   const local = typeof getLocalData === "function"
     ? getLocalData("reviews", asin, fileOverride, limit)
     : { reviews: [] };
-  return mergeReviewsPreferSkill(null, local, limit);
+  return mergeReviewsPreferSkill(null, filterLocalPayloadBySite(local, asin, site), limit);
 }
 
 module.exports = {
@@ -207,5 +267,7 @@ module.exports = {
   mergeReviewsPreferSkill,
   buildLocalReviewsResponse,
   resolveSkillDataDirs,
+  siteToSkillCode,
+  filterLocalPayloadBySite,
   mapSkillReview,
 };

@@ -26,6 +26,8 @@ reviews_*/
 # 构建产物
 *.zip
 *.tar.gz
+__pycache__/
+*.pyc
 
 # 系统文件
 Thumbs.db

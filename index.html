@@ -56,6 +56,7 @@
         background: #fbfcfe;
         color: var(--text);
         outline: none;
+        min-width: 92px;
       }
       .icon-btn {
         height: 34px;
@@ -1249,7 +1250,15 @@
         justify-content: space-between;
         gap: 8px;
       }
-      .competitor-card .ai-head .btn-import {
+      .competitor-card .ai-head .ai-actions {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+      .competitor-card .ai-head .btn-import,
+      .competitor-card .ai-head .btn-review-refresh {
         height: 24px;
         padding: 0 8px;
         border-radius: 5px;
@@ -1259,7 +1268,12 @@
         font-size: 11px;
         cursor: pointer;
       }
+      .competitor-card .ai-head .btn-review-refresh {
+        border-color: #93c5fd;
+        color: #2563eb;
+      }
       .competitor-card .ai-head .btn-import:hover { background: #fff7f7; }
+      .competitor-card .ai-head .btn-review-refresh:hover { background: #eff6ff; }
       .review-import-modal textarea {
         width: 100%;
         min-height: 260px;
@@ -1649,6 +1663,17 @@
         </div>
         <div class="top-tools">
           <label class="source-picker">
+            <span>站点</span>
+            <select id="headerSiteSelect">
+              <option value="US">US - 美国</option>
+              <option value="CA">CA - 加拿大</option>
+              <option value="UK">UK - 英国</option>
+              <option value="DE">DE - 德国</option>
+              <option value="AU">AU - 澳大利亚</option>
+              <option value="JP">JP - 日本</option>
+            </select>
+          </label>
+          <label class="source-picker">
             <span>数据源</span>
             <select id="sourceSelect"></select>
           </label>
@@ -1683,7 +1708,7 @@
         <div class="amz-crawl-head">
           <div>
             <div class="amz-crawl-title">全量评论抓取进度</div>
-            <div class="amz-crawl-hint">后台 Chrome 抓取中；条数来自 Skill 实时 checkpoint，完成后请再点一次「查询」刷新 AI 分析。</div>
+            <div class="amz-crawl-hint">后台 Chrome 抓取中；条数来自 Skill 实时 checkpoint，完成后点击对应竞品列「刷新分析」即可，不需要重新查询基础信息。</div>
           </div>
           <button class="btn btn-ghost btn-small" id="amzCrawlProgressHideBtn" type="button">隐藏</button>
         </div>
@@ -1886,7 +1911,7 @@
               <button class="btn btn-secondary btn-small" id="testXiyouBtn" type="button">测试连接</button>
               <span class="status-light"><i class="light gray" id="xiyouMcpLight"></i><span id="xiyouMcpStatusText">未配置</span></span>
             </div>
-            <p class="hint">西柚 xydc MCP 已嵌入并走本机/局域网代理，默认地址 api/mcp/xiyou；测试连接通过后即可查询商品、销量、BSR、价格趋势与变体。填远程官方地址时会自动切回代理规避 CORS，未配置自动跳过。</p>
+            <p class="hint">可直接把平台复制的 MCP 接入链接粘到“服务器地址”，系统会自动拆出 Key 到密码框，并切回 api/mcp/xiyou 本机代理规避 CORS；测试连接通过后即可查询商品、销量、BSR、价格趋势与变体。</p>
           </div>
 
           <div class="tab-panel" id="tab-sorftime">
@@ -1908,7 +1933,7 @@
               <button class="btn btn-secondary btn-small" id="testSorftimeBtn" type="button">测试连接</button>
               <span class="status-light"><i class="light gray" id="sorftimeMcpLight"></i><span id="sorftimeMcpStatusText">未配置</span></span>
             </div>
-            <p class="hint">Sorftime 已统一合并 MCP 与 API：填 MCP 地址+Key 走 MCP，填 API 地址+Key 走 API，两者均可自动切换，未配置自动跳过。</p>
+            <p class="hint">可直接粘贴 Sorftime 远程 MCP 链接，系统会自动拆出 key 并通过 api/mcp/sorftime 代理调用；填 API 地址+Key 则走 API，两者均可自动切换，未配置自动跳过。</p>
           </div>
 
           <div class="tab-panel" id="tab-sif">
@@ -1924,7 +1949,7 @@
               <button class="btn btn-secondary btn-small" id="testSifBtn" type="button">测试连接</button>
               <span class="status-light"><i class="light gray" id="sifMcpLight"></i><span id="sifMcpStatusText">未配置</span></span>
             </div>
-            <p class="hint">Sif MCP 已接入本机/局域网代理：默认地址 api/mcp/sif，可查询关键词、流量、销量、广告与竞品画像。未配置自动跳过。</p>
+            <p class="hint">可直接粘贴 Sif MCP 接入链接，系统会自动拆出 Secret Key 并通过 api/mcp/sif 代理调用；可查询关键词、流量、销量、广告与竞品画像。</p>
           </div>
 
           <div class="tab-panel" id="tab-lingxing">
@@ -2019,7 +2044,7 @@
               <button class="btn btn-secondary btn-small" id="testAmzReviewsBtn" type="button">检查 Skill / 状态</button>
               <span class="status-light"><i class="light gray" id="amzReviewsLight"></i><span id="amzReviewsStatusText">未检查</span></span>
             </div>
-            <p class="hint">点「查询」时：若 Skill 结果不足目标条数，会先入队并拉起 Chrome 全量抓取（默认 300）。页头会出现独立的「全量评论抓取进度」条（约每 4 秒刷新）。页面上立刻出现的「AI评论分析」多半是商品页零星预览；抓完后请再点一次查询。</p>
+            <p class="hint">点「查询」时：若 Skill 结果不足目标条数，会先入队并拉起 Chrome 全量抓取（默认 300）。页头会出现独立的「全量评论抓取进度」条（约每 4 秒刷新）。基础信息会先完成；评论抓完后点击对应竞品列里的「刷新分析」，只更新 AI 文本分析，不重复查询基础信息。</p>
           </div>
         </div>
         <div class="modal-foot">
@@ -2054,6 +2079,32 @@ const DATA = {"raw":[{"brand":"HOTWAVE","asin":"B0CFJJFLFY","url":"https://www.a
 
       const MARKETPLACES = { US: "US", CA: "CA", UK: "UK", DE: "DE", JP: "JP", AU: "AU" };
       const KEEPA_DOMAINS = { US: 1, UK: 2, DE: 3, FR: 4, JP: 5, CA: 6, AU: 12 };
+      const AMAZON_SITE_DOMAINS = { US: "amazon.com", CA: "amazon.ca", UK: "amazon.co.uk", DE: "amazon.de", AU: "amazon.com.au", JP: "amazon.co.jp" };
+
+      function normalizeMarketplaceSite(site) {
+        const value = String(site || "US").trim().toUpperCase();
+        if (value === "GB") return "UK";
+        return AMAZON_SITE_DOMAINS[value] ? value : "US";
+      }
+
+      function amazonDomainForSite(site) {
+        return AMAZON_SITE_DOMAINS[normalizeMarketplaceSite(site)] || AMAZON_SITE_DOMAINS.US;
+      }
+
+      function amazonProductUrl(asin, marketplace) {
+        const safeAsin = String(asin || "").trim().toUpperCase();
+        return safeAsin ? ("https://www." + amazonDomainForSite(marketplace) + "/dp/" + safeAsin) : "";
+      }
+      function amazonReviewSiteCode(site) {
+        const map = { US: "com", CA: "ca", UK: "co.uk", GB: "co.uk", DE: "de", AU: "com.au", JP: "co.jp" };
+        const value = String(site || "US").trim().toUpperCase();
+        return (map[value] || String(site || "com").trim().toLowerCase().replace(/^\./, "") || "com").toLowerCase();
+      }
+      function reviewTaskMatchesSite(task, site) {
+        const expected = amazonReviewSiteCode(site);
+        const actual = String(task && task.site || "").trim().toLowerCase();
+        return !actual || actual === expected;
+      }
 
       function parseLaunch(s) {
         if (!s) return { launchDate: null, daysOnSale: null };
@@ -2079,20 +2130,69 @@ const DATA = {"raw":[{"brand":"HOTWAVE","asin":"B0CFJJFLFY","url":"https://www.a
        * ============================================================ */
       const CFG_KEY = "amz_provider_config_v1";
       const CACHE_KEY = "amz_provider_cache_v1";
-      /* 升级版本号强制清掉旧缓存，避免旧数据里缺失的图片/上架日期继续被优先命中。 */
+      /* 升级版本号强制清掉旧缓存，避免未中文化的评论分析/产品参数继续被优先命中。 */
 /* v9：强制清缓存，避免旧数据里缺失的图片/串数据的评论继续被命中 */
-const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
+const CACHE_SCHEMA_VERSION = "v18-review-refresh-column-state";
+
+      function normalizeLocalApiPath(path) {
+        const text = String(path || "").trim();
+        if (!text) return "";
+        if (/^https?:\/\//i.test(text)) return text;
+        return text.replace(/^(?:\.\/|\/)+/i, "");
+      }
+      function localApiCandidates(path) {
+        const raw = String(path || "").trim();
+        const clean = normalizeLocalApiPath(raw);
+        const out = [];
+        const add = (url) => {
+          if (url && !out.includes(url)) out.push(url);
+        };
+        if (!clean) return out;
+        if (/^https?:\/\//i.test(clean)) {
+          add(clean);
+          return out;
+        }
+        if (location && location.protocol !== "file:") {
+          try { add(new URL(clean, location.href).toString()); } catch (err) { add(clean); }
+        }
+        if (/^api\//i.test(clean)) {
+          add("http://127.0.0.1:3000/" + clean);
+          add("http://localhost:3000/" + clean);
+        } else {
+          add(clean);
+        }
+        return out;
+      }
+      async function fetchLocalApi(path, options = {}) {
+        const candidates = localApiCandidates(path);
+        let lastErr = null;
+        let lastResponse = null;
+        for (const url of candidates) {
+          try {
+            const res = await fetch(url, options);
+            if (res.ok) return res;
+            lastResponse = res;
+            /* 真实 401/403 要保留给上层判断；404 才尝试下一个本地候选地址。 */
+            if (res.status !== 404) return res;
+          } catch (err) {
+            lastErr = err;
+          }
+        }
+        if (lastResponse) return lastResponse;
+        throw lastErr || new Error("本地服务连接失败");
+      }
 
       /* ---------- 全量评论抓取进度条（独立面板，轮询 /api/reviews/status） ---------- */
       const AMAZON_CRAWL_POLL_MS = 4000;
-      const amazonCrawlTrackers = new Map(); /* asin -> tracker */
+      const amazonCrawlTrackers = new Map(); /* asin + site -> tracker */
 
       function trackAmazonCrawlProgress(opts) {
         const asin = String((opts && opts.asin) || "").toUpperCase();
         if (!/^[A-Z0-9]{10}$/.test(asin)) return;
         const site = (opts && opts.site) || "US";
+        const trackerKey = asin + "|" + amazonReviewSiteCode(site);
         const target = Math.max(10, Number(opts && opts.target) || 300);
-        const existing = amazonCrawlTrackers.get(asin);
+        const existing = amazonCrawlTrackers.get(trackerKey);
         if (existing && existing.timer) clearInterval(existing.timer);
         const tracker = {
           asin,
@@ -2106,23 +2206,24 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
           hidden: false,
           timer: null,
         };
-        amazonCrawlTrackers.set(asin, tracker);
+        amazonCrawlTrackers.set(trackerKey, tracker);
         renderAmazonCrawlProgress();
         const tick = async () => {
-          const cur = amazonCrawlTrackers.get(asin);
+          const cur = amazonCrawlTrackers.get(trackerKey);
           if (!cur || cur.hidden) return;
           try {
-            const res = await fetch(
+            const res = await fetchLocalApi(
               "api/reviews/status?asin=" + encodeURIComponent(asin) + "&site=" + encodeURIComponent(cur.site),
               { signal: AbortSignal.timeout(12000) }
             );
             if (!res.ok) throw new Error("HTTP " + res.status);
             const st = await res.json();
             const tasks = Array.isArray(st.tasks) ? st.tasks : [];
-            const active = tasks.find((t) => t && (t.status === "queued" || t.status === "running"))
-              || (cur.taskId ? tasks.find((t) => t && t.id === cur.taskId) : null)
+            const scopedTasks = tasks.filter((t) => reviewTaskMatchesSite(t, cur.site));
+            const active = scopedTasks.find((t) => t && (t.status === "queued" || t.status === "running"))
+              || (cur.taskId ? scopedTasks.find((t) => t && t.id === cur.taskId) : null)
               || null;
-            const latest = active || tasks[0] || null;
+            const latest = active || scopedTasks[0] || null;
             cur.count = Math.max(Number(st.count) || 0, Number(latest && latest.count) || 0, cur.count || 0);
             if (latest) {
               cur.taskId = latest.id || cur.taskId;
@@ -2135,7 +2236,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
             } else if (!active && cur.count > 0 && cur.count < cur.target && !latest) {
               /* 无活跃任务但未达标：可能 worker 挂了 */
               cur.status = cur.status === "running" ? "failed" : cur.status;
-              if (!cur.error) cur.error = "任务已结束但未达目标条数，可重新查询触发入队";
+              if (!cur.error) cur.error = "任务已结束但未达目标条数，可点查询重新入队，或先点本列刷新分析查看已抓评论";
             }
             cur.updatedAt = Date.now();
             renderAmazonCrawlProgress();
@@ -2158,13 +2259,14 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
 
       function hideAmazonCrawlProgress(asin) {
         if (asin) {
-          const cur = amazonCrawlTrackers.get(String(asin).toUpperCase());
-          if (cur) {
+          const upper = String(asin).toUpperCase();
+          amazonCrawlTrackers.forEach((cur, key) => {
+            if (!cur || cur.asin !== upper) return;
             if (cur.timer) clearInterval(cur.timer);
             cur.timer = null;
             cur.hidden = true;
-            amazonCrawlTrackers.delete(String(asin).toUpperCase());
-          }
+            amazonCrawlTrackers.delete(key);
+          });
         } else {
           amazonCrawlTrackers.forEach((cur) => {
             if (cur.timer) clearInterval(cur.timer);
@@ -2203,7 +2305,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
           const tip = t.error
             ? esc(t.error)
             : (tone === "done"
-              ? "抓取完成，请对该 ASIN 再点一次「查询」刷新 AI 分析"
+              ? "抓取完成，请点击对应竞品列「刷新分析」更新 AI 文本分析"
               : "后台 Chrome 运行中，约每 " + (AMAZON_CRAWL_POLL_MS / 1000) + " 秒刷新");
           return (
             '<div class="amz-crawl-row" data-crawl-asin="' + esc(t.asin) + '">' +
@@ -2300,7 +2402,17 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
             }),
             amazonReviews: Object.assign(defaultConfig().amazonReviews, saved.amazonReviews || {}),
           });
-          cfg.sorftime.mcpServerUrl = normalizeRelativeApiPath(cfg.sorftime.mcpServerUrl || "api/mcp/sorftime") || "api/mcp/sorftime";
+          const normalizeSavedMcp = (providerId, fallbackUrl) => {
+            const pair = normalizeMcpFormPair(providerId, cfg[providerId].mcpServerUrl, cfg[providerId].apiKey);
+            cfg[providerId].mcpServerUrl = pair.url || fallbackUrl || "";
+            cfg[providerId].apiKey = pair.key;
+          };
+          normalizeSavedMcp("sellersprite", "");
+          normalizeSavedMcp("xiyou", "api/mcp/xiyou");
+          normalizeSavedMcp("sorftime", "api/mcp/sorftime");
+          normalizeSavedMcp("sif", "api/mcp/sif");
+          normalizeSavedMcp("lingxing", "api/mcp/lingxing");
+          normalizeSavedMcp("voc", "");
           cfg.local.apiUrl = normalizeRelativeApiPath(cfg.local.apiUrl || "api/local/market-research") || "api/local/market-research";
           cfg.local.reviewUrl = normalizeRelativeApiPath(cfg.local.reviewUrl || "") || "";
           if (typeof cfg.amazonReviews.enabled !== "boolean") cfg.amazonReviews.enabled = cfg.amazonReviews.enabled !== "0" && cfg.amazonReviews.enabled !== false;
@@ -2474,6 +2586,15 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
       function normalizeSharedConfig(cfg) {
         const source = cfg && typeof cfg === "object" ? cfg : {};
         const out = defaultConfig();
+        if (source.mcpServers || source.mcp_servers || source.servers) {
+          const rawMcpConfig = JSON.stringify(source);
+          ["sellersprite", "xiyou", "sorftime", "sif", "lingxing", "voc"].forEach((providerId) => {
+            const pair = extractMcpConfigInput(rawMcpConfig, providerId);
+            if (!pair) return;
+            out[providerId].mcpServerUrl = pair.url || out[providerId].mcpServerUrl || "";
+            out[providerId].apiKey = pair.key || out[providerId].apiKey || "";
+          });
+        }
         if (source.mainProvider) out.mainProvider = source.mainProvider;
         if (source.providerOrder) out.providerOrder = String(source.providerOrder);
         if (source.general) mergeNonEmptyFields(out.general, source.general);
@@ -2499,7 +2620,17 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         if (!nextOrder.includes("lingxing")) nextOrder.push("lingxing");
         if (!nextOrder.includes("local")) nextOrder.push("local");
         out.providerOrder = nextOrder.join(",");
-        out.sorftime.mcpServerUrl = normalizeRelativeApiPath(out.sorftime.mcpServerUrl || "api/mcp/sorftime") || "api/mcp/sorftime";
+        const normalizeSharedMcp = (providerId, fallbackUrl) => {
+          const pair = normalizeMcpFormPair(providerId, out[providerId].mcpServerUrl, out[providerId].apiKey);
+          out[providerId].mcpServerUrl = pair.url || fallbackUrl || "";
+          out[providerId].apiKey = pair.key;
+        };
+        normalizeSharedMcp("sellersprite", "");
+        normalizeSharedMcp("xiyou", "api/mcp/xiyou");
+        normalizeSharedMcp("sorftime", "api/mcp/sorftime");
+        normalizeSharedMcp("sif", "api/mcp/sif");
+        normalizeSharedMcp("lingxing", "api/mcp/lingxing");
+        normalizeSharedMcp("voc", "");
         out.local.apiUrl = normalizeRelativeApiPath(out.local.apiUrl || "api/local/market-research") || "api/local/market-research";
         out.local.reviewUrl = normalizeRelativeApiPath(out.local.reviewUrl || "") || "";
         return out;
@@ -2513,6 +2644,19 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
       }
       class ProviderRequestError extends Error {
         constructor(msg, cause) { super(msg); this.code = "REQUEST_FAILED"; this.cause = cause; }
+      }
+      function formatProviderConnectionError(err, providerName) {
+        const message = err && err.message ? String(err.message) : String(err || "");
+        if (/HTTP\s*401|401|unauthorized|未授权/i.test(message)) {
+          return (providerName || "数据源") + "鉴权失败：Key 无效、Token 已失效，或该 Token 不属于当前数据源。请重新复制 MCP 接入链接，或确认填在对应的数据源 Tab。";
+        }
+        if (/HTTP\s*403|403|forbidden|权限/i.test(message)) {
+          return (providerName || "数据源") + "权限不足：当前 Token 没有调用该工具/接口的权限。";
+        }
+        if (/timeout|超时/i.test(message)) {
+          return (providerName || "数据源") + "连接超时：可稍后重试，或检查网络/代理。";
+        }
+        return "连接失败：" + message;
       }
 
       class ProductDataProvider {
@@ -2758,7 +2902,11 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         _entry(kind, asin, marketplace) {
           const entry = MOCK_CATALOG[asin];
           if (!entry || !entry[kind]) return empty(kind, asin, marketplace);
-          return JSON.parse(JSON.stringify(entry[kind]));
+          const out = JSON.parse(JSON.stringify(entry[kind]));
+          const site = normalizeMarketplaceSite(marketplace || out.marketplace || "US");
+          out.marketplace = site;
+          if (kind === "basicInfo") out.url = amazonProductUrl(asin, site);
+          return out;
         }
         async getProductBasicInfo(asin, marketplace) { return this._entry("basicInfo", asin, marketplace); }
         async getSalesData(asin, marketplace) { return this._entry("salesData", asin, marketplace); }
@@ -2791,12 +2939,15 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         async _callMcp(method, params) {
           if (!this.isConfigured()) throw new ProviderNotConfiguredError("卖家精灵MCP未配置");
           /* MCP 协议：先 tools/call 调用对应工具，返回 SSE/JSON 后解析 content 文本 */
-          const url = String(this.config.mcpServerUrl || "").trim().replace(/\/+$/, "");
+          const url = mcpEndpoint(this.config.mcpServerUrl, "/mcp");
           const headers = {
             "Content-Type": "application/json",
             "Accept": "application/json, text/event-stream",
           };
-          if (String(this.config.apiKey || "").trim()) headers.Authorization = "Bearer " + this.config.apiKey;
+          if (String(this.config.apiKey || "").trim()) {
+            if (isLocalProxyUrl(url)) headers["x-sellersprite-key"] = this.config.apiKey;
+            else headers.Authorization = "Bearer " + this.config.apiKey;
+          }
           const res = await fetch(url, {
             method: "POST",
             headers,
@@ -2891,7 +3042,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
           out.found = !!(raw && (raw.title || raw.asin));
           out.brand = raw?.brand ?? raw?.brandName ?? raw?.manufacturer ?? raw?.sellerName ?? raw?.vendorName ?? null;
           out.title = raw?.title ?? raw?.productTitle ?? raw?.name ?? raw?.itemName ?? null;
-          out.url = raw?.url ?? raw?.link ?? raw?.detailPageUrl ?? raw?.DetailPageURL ?? "https://www.amazon.com/dp/" + asin;
+          out.url = raw?.url ?? raw?.link ?? raw?.detailPageUrl ?? raw?.DetailPageURL ?? amazonProductUrl(asin, marketplace);
           out.price = raw?.price ?? raw?.currentPrice ?? raw?.salePrice ?? raw?.offerPrice ?? null;
           out.originalPrice = raw?.listPrice ?? raw?.originalPrice ?? raw?.msrp ?? null;
           out.discount = raw?.discount ?? raw?.discountPercent ?? raw?.savingsPercentage ?? null;
@@ -2972,7 +3123,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
             const res = await this._request("test_connection", {});
             return { ok: true, status: "connected", message: "连接成功", data: res };
           } catch (err) {
-            return { ok: false, status: "failed", message: "连接失败：" + err.message };
+            return { ok: false, status: "failed", message: formatProviderConnectionError(err, "卖家精灵") };
           }
         }
       }
@@ -3065,7 +3216,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
             const raw = await this._callProduct(asin, marketplace, true);
             out.found = true;
             out.title = raw?.title ?? null;
-            out.url = "https://www.amazon.com/dp/" + asin;
+            out.url = amazonProductUrl(asin, marketplace);
             out.brand = raw?.brand ?? null;
             out.imageUrl = this._firstKeepaImage(raw);
             out.imageLabel = raw?.title || (asin + " 商品主图");
@@ -3341,6 +3492,91 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         if (/^(?:\.\/)?\/?api\//i.test(url) || /[?&]/.test(url) || /\/mcp$/i.test(url)) return url;
         return url + (fallbackPath || "/mcp");
       }
+      const MCP_SECRET_QUERY_KEYS = ["key", "api_key", "apikey", "token", "access_token", "mcp_token", "secret", "secret_key"];
+      function normalizeMcpToken(value) {
+        let text = String(value || "").trim();
+        if (!text) return "";
+        text = text.replace(/^["']|["']$/g, "").trim();
+        const headerMatch = text.match(/^Authorization\s*:\s*Bearer\s+(.+)$/i);
+        if (headerMatch) text = headerMatch[1].trim();
+        text = text.replace(/^Bearer\s+/i, "").trim();
+        return text.replace(/^["']|["']$/g, "").trim();
+      }
+      function extractMcpConfigInput(value, providerId) {
+        const text = String(value || "").trim();
+        if (!text || !/^\{[\s\S]*\}$/.test(text)) return null;
+        let parsed = null;
+        try { parsed = JSON.parse(text); } catch (err) { return null; }
+        const root = parsed && typeof parsed === "object" ? parsed : {};
+        const servers = root.mcpServers || root.mcp_servers || root.servers || null;
+        const entries = servers && typeof servers === "object"
+          ? Object.entries(servers)
+          : (root.url || root.headers ? [["default", root]] : []);
+        const id = String(providerId || "").toLowerCase();
+        const matchesProvider = (name, server) => {
+          const haystack = [name, server?.url, server?.endpoint, server?.baseUrl, server?.command].filter(Boolean).join(" ");
+          if (id === "xiyou") return /xiyou|xydc|西柚|mcp\.xydc\.com/i.test(haystack);
+          if (id === "sorftime") return /sorftime|mcp\.sorftime\.com/i.test(haystack);
+          if (id === "sif") return /(^|\b)sif\b|mcp\.sif\.com/i.test(haystack);
+          if (id === "lingxing") return /lingxing|领星|openmcp\.lingxing\.com/i.test(haystack);
+          if (id === "voc") return /voc|voice\s*of\s*customer|review/i.test(haystack);
+          if (id === "sellersprite") return /seller.?sprite|卖家精灵/i.test(haystack);
+          return true;
+        };
+        const picked = entries.find(([name, server]) => server && matchesProvider(name, server))
+          || (entries.length === 1 ? entries[0] : null);
+        if (!picked) return null;
+        const server = picked[1] || {};
+        const headers = server.headers || server.requestInit?.headers || server.request?.headers || {};
+        const auth = headers.Authorization || headers.authorization || headers["X-Mcp-Key"] || headers["x-mcp-key"] || headers["secret-key"] || headers["Secret-Key"] || headers["x-xiyou-key"] || headers["x-sorftime-key"] || headers["x-sif-key"] || headers["x-lingxing-key"];
+        const key = normalizeMcpToken(auth || server.apiKey || server.api_key || server.key || server.token || server.accessToken || server.access_token || root.apiKey || root.token);
+        return {
+          url: normalizeRelativeApiPath(String(server.url || server.endpoint || server.baseUrl || root.url || "").trim()),
+          key,
+        };
+      }
+      function splitMcpConnectionInput(urlValue, keyValue, providerId) {
+        let url = String(urlValue || "").trim();
+        let key = normalizeMcpToken(keyValue);
+        const fromUrlConfig = extractMcpConfigInput(urlValue, providerId);
+        const fromKeyConfig = extractMcpConfigInput(keyValue, providerId);
+        if (fromUrlConfig) {
+          url = fromUrlConfig.url || url;
+          if (!key && fromUrlConfig.key) key = fromUrlConfig.key;
+        }
+        if (fromKeyConfig) {
+          if (!url || url === String(urlValue || "").trim()) url = fromKeyConfig.url || url;
+          if (!key && fromKeyConfig.key) key = fromKeyConfig.key;
+        }
+        if (!url) return { url, key };
+        try {
+          const parsed = new URL(url);
+          MCP_SECRET_QUERY_KEYS.forEach((name) => {
+            const value = parsed.searchParams.get(name);
+            if (!key && value) key = normalizeMcpToken(value);
+            parsed.searchParams.delete(name);
+          });
+          /* 复制 MCP 链接时经常带 key/token；展示和保存时拆到密码框，避免明文留在地址框。 */
+          url = parsed.toString().replace(/[?&]$/, "");
+        } catch (err) {
+          /* 相对代理地址如 api/mcp/xiyou 不需要 URL 解析 */
+        }
+        return { url: normalizeRelativeApiPath(url), key };
+      }
+      function knownProxyForMcp(providerId, url, key) {
+        const text = String(url || "").trim();
+        const id = String(providerId || "").trim();
+        if (id === "xiyou" && (!text || /^https?:\/\/mcp\.xydc\.com\/?/i.test(text))) return "api/mcp/xiyou";
+        if (id === "sorftime" && (!text || /^https?:\/\/mcp\.sorftime\.com\/?/i.test(text))) return "api/mcp/sorftime";
+        if (id === "sif" && (!text || /^https?:\/\/mcp\.sif\.com\/?/i.test(text))) return "api/mcp/sif";
+        if (id === "lingxing" && (!text || /^https?:\/\/openmcp\.lingxing\.com\/?/i.test(text))) return "api/mcp/lingxing";
+        return normalizeRelativeApiPath(text);
+      }
+      function normalizeMcpFormPair(providerId, urlValue, keyValue) {
+        const parsed = splitMcpConnectionInput(urlValue, keyValue, providerId);
+        const url = knownProxyForMcp(providerId, parsed.url, parsed.key);
+        return { url, key: normalizeMcpToken(parsed.key) };
+      }
       function normalizeRelativeApiPath(url) {
         const text = String(url || "").trim();
         if (!text) return text;
@@ -3380,7 +3616,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         const imageRoot = src.images ?? src.Images ?? src.imageSet ?? {};
         out.brand = asText(src.brand ?? src["品牌"] ?? src.brandName ?? src.brand_name ?? src.manufacturer ?? src.manufacturerName ?? src.vendorName ?? src.sellerName ?? src.storeName ?? src.byLineInfo?.Brand?.DisplayValue ?? src.ItemInfo?.ByLineInfo?.Brand?.DisplayValue ?? src.byLineInfo?.Brand ?? src.brand?.DisplayValue);
         out.title = asText(src.title ?? src["标题"] ?? src.name ?? src.productTitle ?? src.itemName ?? src.displayName ?? src.listingTitle ?? src.productName ?? src.ItemInfo?.Title?.DisplayValue);
-        out.url = asText(src.url ?? src.link ?? src.detailPageUrl ?? src.DetailPageURL ?? src.detailUrl ?? src.productUrl ?? src.canonicalUrl ?? src.dpUrl ?? src["链接"]) || ("https://www.amazon.com/dp/" + asin);
+        out.url = asText(src.url ?? src.link ?? src.detailPageUrl ?? src.DetailPageURL ?? src.detailUrl ?? src.productUrl ?? src.canonicalUrl ?? src.dpUrl ?? src["链接"]) || amazonProductUrl(asin, marketplace);
         out.price = asNumber(src.price ?? src.currentPrice ?? src.offerPrice ?? src.salePrice ?? src.listingPrice ?? src["售价"] ?? src.displayPrice ?? offer.price ?? offer.Price?.Amount ?? offer.Price?.DisplayAmount);
         out.originalPrice = asNumber(src.originalPrice ?? src.listPrice ?? src.msrp ?? src.regularPrice ?? src.compareAtPrice ?? src.original_price ?? offer.listPrice ?? offer.SavingBasis?.Amount);
         out.discount = asNumber(src.discount ?? src.discountPercent ?? src.savingsPercentage ?? src.savePercent ?? src.discount_rate ?? offer.savingsPercentage ?? offer.Price?.Savings?.Percentage);
@@ -3548,7 +3784,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
             return String((this.config && this.config[meta.urlField]) || "").trim().replace(/\/+$/, "");
           }
           _authHeaders() {
-            const key = String((this.config && this.config[meta.keyField]) || "").trim();
+            const key = normalizeMcpToken((this.config && this.config[meta.keyField]) || "");
             return key ? { "Authorization": "Bearer " + key } : {};
           }
           _jsonRpcCall(baseUrl, method, params) {
@@ -3675,7 +3911,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
               await this._request(meta.methods.test, { asin: meta.testAsin || "B0B441L1K6", marketplace: "US", ping: true });
               return { ok: true, status: "connected", message: meta.label + " 连接成功" };
             } catch (err) {
-              return { ok: false, status: "failed", message: "连接失败：" + err.message };
+              return { ok: false, status: "failed", message: formatProviderConnectionError(err, meta.label) };
             }
           }
         };
@@ -3691,18 +3927,21 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
           isConfigured() {
             const cfg = this.config || {};
             const mcpUrl = String(cfg.mcpServerUrl || "").trim();
-            const mcpOk = !!(mcpUrl && (String(cfg.apiKey || "").trim() || hasInlineAuth(mcpUrl) || isLocalProxyUrl(mcpUrl)));
+            const mcpOk = !!(mcpUrl && (normalizeMcpToken(cfg.apiKey || "") || hasInlineAuth(mcpUrl) || isLocalProxyUrl(mcpUrl)));
             const apiOk = !!(String(cfg.apiBaseUrl || "").trim() && String(cfg.apiKey2 || "").trim());
             return mcpOk || apiOk;
           }
           _jsonRpcCall(action, params) {
             const cfg = this.config || {};
             const url = mcpEndpoint(cfg.mcpServerUrl, meta.path || "/mcp");
-            const key = String(cfg.apiKey || "").trim();
+            const key = normalizeMcpToken(cfg.apiKey || "");
             return new Promise((resolve, reject) => {
               const timer = setTimeout(() => reject(new ProviderRequestError(meta.label + " MCP 请求超时")), 30000);
               const headers = { "Content-Type": "application/json", "Accept": "application/json, text/event-stream" };
-              if (key) headers.Authorization = "Bearer " + key;
+              if (key) {
+                if (isLocalProxyUrl(url)) headers["x-" + meta.id + "-key"] = key;
+                else headers.Authorization = "Bearer " + key;
+              }
               fetch(url, {
                 method: "POST",
                 headers,
@@ -3759,7 +3998,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
           _httpJsonCall(action, params) {
             const cfg = this.config || {};
             const base = String(cfg.apiBaseUrl || "").trim().replace(/\/+$/, "");
-            const key = String(cfg.apiKey2 || "").trim();
+            const key = normalizeMcpToken(cfg.apiKey2 || "");
             const url = (base + "/" + String(action || "").replace(/^\/+/, "")).replace(/\/+$/, "");
             return fetch(url, {
               method: "POST",
@@ -3774,8 +4013,8 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
             const cfg = this.config || {};
             const mcpUrl = String(cfg.mcpServerUrl || "").trim();
             const channels = [];
-            if (mcpUrl && (String(cfg.apiKey || "").trim() || hasInlineAuth(mcpUrl) || isLocalProxyUrl(mcpUrl))) channels.push("mcp");
-            if (String(cfg.apiBaseUrl || "").trim() && String(cfg.apiKey2 || "").trim()) channels.push("api");
+            if (mcpUrl && (normalizeMcpToken(cfg.apiKey || "") || hasInlineAuth(mcpUrl) || isLocalProxyUrl(mcpUrl))) channels.push("mcp");
+            if (String(cfg.apiBaseUrl || "").trim() && normalizeMcpToken(cfg.apiKey2 || "")) channels.push("api");
             if (!channels.length) throw new ProviderNotConfiguredError(meta.label + "未配置");
             const actions = Array.isArray(action) ? action.filter(Boolean) : [action].filter(Boolean);
             let lastErr = null;
@@ -3825,7 +4064,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
               const raw = await this._request(meta.methods.test, { asin: meta.testAsin || "B0B441L1K6", marketplace: "US", ping: true });
               return { ok: true, status: "connected", message: meta.label + " 连接成功", data: raw };
             } catch (err) {
-              return { ok: false, status: "failed", message: "连接失败：" + err.message };
+              return { ok: false, status: "failed", message: formatProviderConnectionError(err, meta.label) };
             }
           }
         };
@@ -3840,7 +4079,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         isConfigured() {
           const cfg = this.config || {};
           const mcpUrl = String(cfg.mcpServerUrl || "").trim();
-          const mcpKey = String(cfg.apiKey || "").trim();
+          const mcpKey = normalizeMcpToken(cfg.apiKey || "");
           /* 本地代理 api/mcp/* 已由服务端注入密钥，浏览器端 URL 即视为已配置 */
           const proxyOk = isLocalProxyUrl(mcpUrl);
           const directOk = !!(mcpUrl && (mcpKey || hasInlineAuth(mcpUrl)));
@@ -3878,12 +4117,15 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         }
         _jsonRpcCall(action, params) {
           const cfg = this.config || {};
-          const mcpKey = String(cfg.apiKey || "").trim();
+          const mcpKey = normalizeMcpToken(cfg.apiKey || "");
           const url = this._mcpUrl().replace(/\/+$/, "");
           return new Promise((resolve, reject) => {
             const timer = setTimeout(() => reject(new ProviderRequestError("西柚 MCP 请求超时")), 30000);
             const headers = { "Content-Type": "application/json", "Accept": "application/json, text/event-stream" };
-            if (mcpKey && !isLocalProxyUrl(url)) headers.Authorization = "Bearer " + mcpKey;
+            if (mcpKey) {
+              if (isLocalProxyUrl(url)) headers["x-xiyou-key"] = mcpKey;
+              else headers.Authorization = "Bearer " + mcpKey;
+            }
             fetch(url, {
               method: "POST",
               headers,
@@ -4057,7 +4299,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
             const raw = await this.getProductBasicInfo("B0CFJJFLFY", "US");
             return { ok: raw.found, status: raw.found ? "connected" : "failed", message: raw.found ? "西柚连接成功" : "西柚未返回商品详情" };
           } catch (err) {
-            return { ok: false, status: "failed", message: "连接失败：" + (err && err.message || err) };
+            return { ok: false, status: "failed", message: formatProviderConnectionError(err, "西柚") };
           }
         }
       }
@@ -4191,7 +4433,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         }
         _detailToBasic(asin, marketplace, src) {
           return normalizeBasicPayload(asin, marketplace, Object.assign({}, src || {}, {
-            url: asText(src?.url) || ("https://www.amazon.com/dp/" + asin),
+            url: asText(src?.url) || amazonProductUrl(asin, marketplace),
             imageUrl: this._image(src?.main_image ?? src?.images ?? src?.image),
             category: src?.top_category ?? src?.category,
             subcategory: src?.subcategory,
@@ -4295,7 +4537,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
             if (/次数|上限|额度|quota|limit/i.test(message)) {
               return { ok: true, status: "limited", message: "Sorftime 已连通，但当前额度受限：" + message };
             }
-            return { ok: false, status: "failed", message: "连接失败：" + err.message };
+            return { ok: false, status: "failed", message: formatProviderConnectionError(err, "Sorftime") };
           }
         }
       }
@@ -4309,7 +4551,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         isConfigured() {
           const cfg = this.config || {};
           const mcpUrl = String(cfg.mcpServerUrl || "").trim();
-          const key = String(cfg.apiKey || "").trim();
+          const key = normalizeMcpToken(cfg.apiKey || "");
           if (!mcpUrl) return false;
           if (key) return true;
           if (hasInlineAuth(mcpUrl)) return true;
@@ -4328,7 +4570,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         }
         _jsonRpcCall(action, params) {
           const cfg = this.config || {};
-          const key = String(cfg.apiKey || "").trim();
+          const key = normalizeMcpToken(cfg.apiKey || "");
           const url = this._mcpUrl().replace(/\/+$/, "");
           return new Promise((resolve, reject) => {
             const timer = setTimeout(() => reject(new ProviderRequestError("Sif MCP 请求超时")), 30000);
@@ -4516,7 +4758,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
             const ok = !!(row && (row.title || row.brand || row.asin || row.price));
             return { ok, status: ok ? "connected" : "failed", message: ok ? "Sif 连接成功，接口已返回真实商品数据" : "Sif 连接成功但未返回商品数据", data: { ping: list, profile: row } };
           } catch (err) {
-            return { ok: false, status: "failed", message: "连接失败：" + (err && err.message || err) };
+            return { ok: false, status: "failed", message: formatProviderConnectionError(err, "Sif") };
           }
         }
       }
@@ -4529,7 +4771,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         isConfigured() {
           const cfg = this.config || {};
           const mcpUrl = String(cfg.mcpServerUrl || "").trim();
-          const key = String(cfg.apiKey || "").trim();
+          const key = normalizeMcpToken(cfg.apiKey || "");
           if (!mcpUrl) return false;
           if (key) return true;
           if (hasInlineAuth(mcpUrl)) return true;
@@ -4545,7 +4787,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         }
         _jsonRpcCall(action, params) {
           const cfg = this.config || {};
-          const key = String(cfg.apiKey || "").trim();
+          const key = normalizeMcpToken(cfg.apiKey || "");
           const url = this._mcpUrl().replace(/\/+$/, "");
           return new Promise((resolve, reject) => {
             const timer = setTimeout(() => reject(new ProviderRequestError("LingXing MCP 请求超时")), 30000);
@@ -4652,7 +4894,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
             const ok = !!(list && (Array.isArray(list) ? list.length : Object.keys(list).length));
             return { ok, status: ok ? "connected" : "failed", message: ok ? "LingXing 连接成功" : "LingXing 未返回工具列表" };
           } catch (err) {
-            return { ok: false, status: "failed", message: "连接失败：" + (err && err.message || err) };
+            return { ok: false, status: "failed", message: formatProviderConnectionError(err, "LingXing") };
           }
         }
       }
@@ -5012,7 +5254,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         const seen = new Set();
         let duplicates = 0;
         (rows || []).forEach((row) => {
-          const sig = reviewRowSignature(row);
+          const sig = reviewUniqueKey(row, row && row.asin) || reviewRowSignature(row);
           if (!sig) return;
           if (seen.has(sig)) {
             duplicates += 1;
@@ -5129,7 +5371,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         return uniqueTextItems(splitSummaryLines(value).map(stripSummaryCount)).slice(0, 5).join("\n") || null;
       }
       /* v3：彻底丢弃旧版全局混合词库（其中包含跨 ASIN 串数据的脏数据），按 ASIN 隔离重新学习 */
-      const REVIEW_LEARNING_KEY = "amz_review_learning_v6";
+      const REVIEW_LEARNING_KEY = "amz_review_learning_v7_asin_site_isolated";
       function emptyReviewLearningBucket() {
         return {
           sellingPoints: [],
@@ -5527,6 +5769,74 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         prepared.rows.forEach((row) => accumulateReviewRow(state, row));
         return finalizeReviewAnalysisState(state);
       }
+      /* 评论多语言翻译器：优先走本地 Google 翻译代理，按当前站点选择源语言；
+       * 已是中文的评论保留原文，翻译失败的评论也保留原文，不编造内容。 */
+      async function translateReviewRowsForAnalysis(asin, marketplace, rows) {
+        const safeRows = (Array.isArray(rows) ? rows : []).filter((row) => row && typeof row === "object");
+        if (!safeRows.length) return rows || [];
+        const site = normalizeMarketplaceSite(marketplace || manager?.config?.general?.site || "US");
+        const needsTranslation = (row) => {
+          const text = [
+            row.title,
+            row.content,
+            row.text,
+            row.comment,
+            row.body,
+            row.reviewText,
+          ].filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+          return text.length > 1 && !/^[\u4e00-\u9fff\s\d.,!?%：:；;、，。'"()\-+*/&@#_$¥€£]+$/.test(text);
+        };
+        const pendingIndexes = [];
+        safeRows.forEach((row, index) => { if (needsTranslation(row)) pendingIndexes.push(index); });
+        if (!pendingIndexes.length) return safeRows;
+        const batchSize = 80;
+        let translatedCount = 0;
+        for (let i = 0; i < pendingIndexes.length; i += batchSize) {
+          const indexes = pendingIndexes.slice(i, i + batchSize);
+          const payloadRows = indexes.map((index) => ({
+            content: [
+              safeRows[index].title,
+              safeRows[index].content,
+              safeRows[index].text,
+              safeRows[index].comment,
+              safeRows[index].body,
+              safeRows[index].reviewText,
+            ].filter(Boolean).join("\n").trim(),
+          }));
+          try {
+            const res = await fetchLocalApi("api/translate/reviews", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ site, reviews: payloadRows }),
+              signal: AbortSignal.timeout(30000),
+            });
+            if (!res.ok) throw new Error("HTTP " + res.status);
+            const payload = await res.json();
+            const translated = Array.isArray(payload.translated) ? payload.translated : [];
+            translated.forEach((item, offset) => {
+              const rowIndex = indexes[offset];
+              const translatedText = String((item && (item.content || item.text || item.body || item.reviewText || item.comment)) || "").trim();
+              if (!item || !item.translated || !translatedText || rowIndex === undefined) return;
+              safeRows[rowIndex] = Object.assign({}, safeRows[rowIndex], {
+                content: translatedText,
+                text: translatedText,
+                body: translatedText,
+                reviewText: translatedText,
+                comment: translatedText,
+                originalContent: safeRows[rowIndex].originalContent || safeRows[rowIndex].content || safeRows[rowIndex].text || safeRows[rowIndex].comment || safeRows[rowIndex].body || safeRows[rowIndex].reviewText || "",
+                translated: true,
+              });
+              translatedCount++;
+            });
+          } catch (err) {
+            this?.addLog?.(asin, "reviewsData", "Google 翻译代理部分批次失败，保留原文继续分析：" + (err.message || err), "warn");
+          }
+        }
+        if (translatedCount) {
+          manager?.addLog?.(asin, "reviewsData", "评论多语言翻译完成：Google 代理翻译 " + translatedCount + "/" + safeRows.length + " 条为中文", "info");
+        }
+        return safeRows;
+      }
       function nextReviewFrame() {
         return new Promise((resolve) => {
           if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => resolve());
@@ -5621,7 +5931,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
       const MARKET_RESEARCH_CATALOG = [
         {
           asin: "B0CFJJFLFY", brand: "HOTWAVE", title: "Push Up Board, Portable PushUp Board, Foldable 20 in 1 Push Up Bar | Multifunctional Pushup Handles for Floor, Professional Strength Training",
-          url: "https://www.amazon.com/dp/B0CFJJFLFY", image: "assets/market-research/product-1-B0CFJJFLFY.png",
+          url: amazonProductUrl("B0CFJJFLFY", "US"), image: "assets/market-research/product-1-B0CFJJFLFY.png",
           launchDate: "2023-08-24", daysOnSale: 1077, rating: 4.5, reviewCount: 5894,
           category: "#398 in Sports & Outdoors", subcategory: "#3 in Strength Training Pushup Stands",
           productParams: "材料 丙烯腈-丁二烯-苯乙烯共聚物（ABS）\n手柄类型 ABS\n可以自由组装配件来完成训练：可折叠俯卧撑板、独特的3节杠铃、8根强力阻力带、2个脚踝绑带、门锚、健腹轮",
@@ -5629,7 +5939,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         },
         {
           asin: "B0CSD1DDWD", brand: "LALAHIGH", title: "Push Up Board,36 in 1 Home Gym Equipment with Ab Roller Wheel & Resistance Bands, Portable Foldable Workout Board for Full Body Strength",
-          url: "https://www.amazon.com/dp/B0CSD1DDWD", image: "assets/market-research/product-2-B0CSD1DDWD.png",
+          url: amazonProductUrl("B0CSD1DDWD", "US"), image: "assets/market-research/product-2-B0CSD1DDWD.png",
           launchDate: "2024-01-15", daysOnSale: 933, rating: 4.3, reviewCount: 3680,
           category: "#11,449 in Sports & Outdoors", subcategory: "#13 in Strength Training Pushup Stands",
           productParams: "材料 聚丙烯（PP）\n产品尺寸 长31英寸 x 宽10英寸 x 高1英寸\n包含组件 1 x LALAHIGH 多功能健身板，6 x 阻力带，2 x 阻力带手柄，1 x 普拉提杆，2 x 健腹轮，2 x 俯卧撑手柄，2 x 脚踝绑带，1 x 门锚，8 x 登山扣，防滑垫",
@@ -5637,7 +5947,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         },
         {
           asin: "B0FHHLZT15", brand: "MHCYAB", title: "Push Up Board for Men - 15-in-1 Foldable Pushup Board with Push Up Bar, Handles & Bands, Portable Home Gym & Workout Equipment",
-          url: "https://www.amazon.com/dp/B0FHHLZT15", image: "assets/market-research/product-3-B0FHHLZT15.png",
+          url: amazonProductUrl("B0FHHLZT15", "US"), image: "assets/market-research/product-3-B0FHHLZT15.png",
           launchDate: "2025-08-13", daysOnSale: 357, rating: 4.6, reviewCount: 89,
           category: "#19,836 in Sports & Outdoors", subcategory: "#20 in Strength Training Pushup Stands",
           productParams: "材料 聚氯乙烯（PVC）\n张力支撑 500磅\n表带类型 弹性阻力带\n包含组件 把手、俯卧撑板、阻力带",
@@ -5675,7 +5985,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
             const timer = setTimeout(() => controller.abort(), Math.max(3000, Number((manager && manager.config && manager.config.general && manager.config.general.timeout) || 10) * 1000));
             let res;
             try {
-              res = await fetch(apiUrl, { signal: controller.signal });
+              res = await fetchLocalApi(apiUrl, { signal: controller.signal });
             } finally {
               clearTimeout(timer);
             }
@@ -5769,7 +6079,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
           }
           return found;
         }
-        async _loadExternalReviews(asin, apiUrlOverride) {
+        async _loadExternalReviews(asin, marketplace, apiUrlOverride) {
           let apiUrl = String(apiUrlOverride ?? (this.config && this.config.reviewUrl) ?? "").trim();
           const filePath = apiUrl && !/^https?:\/\//i.test(apiUrl) && !/^(?:\.\/)?\/?api\//i.test(apiUrl) && !/^[.]/.test(apiUrl)
             ? apiUrl
@@ -5781,11 +6091,15 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
           if (asin && !/[?&]asin=/i.test(apiUrl)) {
             apiUrl += (apiUrl.includes("?") ? "&" : "?") + "asin=" + encodeURIComponent(String(asin).toUpperCase());
           }
+          const site = normalizeMarketplaceSite(marketplace || (manager && manager.config && manager.config.general && manager.config.general.site) || "US");
+          if (!/[?&]site=/i.test(apiUrl)) {
+            apiUrl += (apiUrl.includes("?") ? "&" : "?") + "site=" + encodeURIComponent(site);
+          }
           const controller = new AbortController();
           const timer = setTimeout(() => controller.abort(), Math.max(3000, Number((manager && manager.config && manager.config.general && manager.config.general.timeout) || 10) * 1000));
           let res;
           try {
-            res = await fetch(apiUrl, { signal: controller.signal });
+            res = await fetchLocalApi(apiUrl, { signal: controller.signal });
           } finally {
             clearTimeout(timer);
           }
@@ -5798,9 +6112,10 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
           return { reviews, structured, reviewsData: Array.isArray(raw) ? null : (raw.reviewsData || raw.analysis || raw.summaryData || null), meta: raw };
         }
         /* 亚马逊商品页自带的部分真实评论（8~12 条），作为本地评论文件的补充来源 */
-        async _loadAmazonPageReviews(asin) {
-          const url = "api/amazon/page-reviews?asin=" + encodeURIComponent(String(asin).toUpperCase());
-          const res = await fetch(url, { signal: AbortSignal.timeout(35000) });
+        async _loadAmazonPageReviews(asin, marketplace) {
+          const url = "api/amazon/page-reviews?asin=" + encodeURIComponent(String(asin).toUpperCase()) +
+            "&site=" + encodeURIComponent(normalizeMarketplaceSite(marketplace || (manager && manager.config && manager.config.general && manager.config.general.site) || "US"));
+          const res = await fetchLocalApi(url, { signal: AbortSignal.timeout(35000) });
           if (!res.ok) throw new ProviderRequestError("亚马逊页面评论接口 HTTP " + res.status);
           const raw = await res.json();
           return Array.isArray(raw.reviews) ? raw.reviews : [];
@@ -5821,7 +6136,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
           const target = Math.max(10, Number(ar.target) || 300);
           let count = 0;
           let resultExists = false;
-          const statusRes = await fetch(
+          const statusRes = await fetchLocalApi(
             "api/reviews/status?asin=" + encodeURIComponent(upper) + "&site=" + encodeURIComponent(site),
             { signal: AbortSignal.timeout(12000) }
           );
@@ -5839,14 +6154,14 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
             };
           }
           const active = Array.isArray(st.tasks)
-            ? st.tasks.find((t) => t && (t.status === "queued" || t.status === "running"))
+            ? st.tasks.filter((t) => reviewTaskMatchesSite(t, site)).find((t) => t && (t.status === "queued" || t.status === "running"))
             : null;
           if (active) {
             let worker = null;
             /* 关键死穴：任务停在 queued 但 Chrome Worker 从未拉起 → 这里强制再 spawn */
             if (active.status === "queued" && runWorker) {
               try {
-                const kickRes = await fetch("api/reviews/run", {
+                const kickRes = await fetchLocalApi("api/reviews/run", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ taskId: active.id }),
@@ -5870,7 +6185,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
             });
             return {
               message: "全量评论抓取" + (active.status === "running" ? "进行中" : "排队中") +
-                "（已有 " + count + "/" + target + "，task=" + active.id + "，status=" + active.status + kickNote + "）。完成后请重新查询。",
+                "（已有 " + count + "/" + target + "，task=" + active.id + "，status=" + active.status + kickNote + "）。完成后点击本列「刷新分析」。",
               count,
               resultExists,
               skipped: false,
@@ -5881,7 +6196,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
               site,
             };
           }
-          const enqRes = await fetch("api/reviews/enqueue", {
+          const enqRes = await fetchLocalApi("api/reviews/enqueue", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -5901,7 +6216,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
           if (runWorker && taskId && !workerPid) {
             /* enqueue 成功但 worker 没 pid → 立刻补拉一次 */
             try {
-              await fetch("api/reviews/run", {
+              await fetchLocalApi("api/reviews/run", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ taskId }),
@@ -5920,7 +6235,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
           return {
             message: "已入队全量评论抓取（当前 Skill " + count + "/" + target + " 条，task=" + taskId +
               (workerPid ? "，worker pid=" + workerPid : "，请确认本机已弹出 Chrome") +
-              "）。后台需数分钟；下方若先出现十来条「AI评论」，只是商品页零星预览，抓完请再查一次。",
+              "）。后台需数分钟；基础信息会先展示，抓完后点击本列「刷新分析」自动汇总全量评论。",
             count,
             resultExists,
             skipped: false,
@@ -5935,10 +6250,12 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
           const item = await this._find(asin);
           const out = empty("basicInfo", asin, marketplace);
           const mock = this._mockEntry(asin);
+          const site = normalizeMarketplaceSite(marketplace || "US");
           if (!item && !mock) {
             /* 内置目录和市场调研表都没命中时，尝试亚马逊商品页抓取，只取公开真实字段 */
             try {
-              const res = await fetch("api/amazon/product-page?asin=" + encodeURIComponent(String(asin).toUpperCase()), {
+              const res = await fetchLocalApi("api/amazon/product-page?asin=" + encodeURIComponent(String(asin).toUpperCase()) +
+                "&site=" + encodeURIComponent(site), {
                 method: "GET",
                 signal: AbortSignal.timeout(Math.max(8, Number((manager && manager.config && manager.config.general && manager.config.general.timeout) || 10) * 1000)),
               });
@@ -5948,7 +6265,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
                   out.found = true;
                   out.brand = page.brand || null;
                   out.title = page.title || null;
-                  out.url = "https://www.amazon.com/dp/" + asin;
+                  out.url = amazonProductUrl(asin, site);
                   out.price = page.price ?? null;
                   out.rating = page.rating ?? null;
                   out.reviewCount = page.reviewCount ?? null;
@@ -5962,7 +6279,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
           out.found = true;
           out.brand = (item && item.brand) || null;
           out.title = (item && item.title) || null;
-          out.url = (item && item.url) || ("https://www.amazon.com/dp/" + asin);
+          out.url = amazonProductUrl(asin, site);
           out.price = (item && item.price) ?? (mock && mock.basicInfo && mock.basicInfo.price) ?? null;
           out.originalPrice = (item && item.originalPrice) ?? (mock && mock.basicInfo && mock.basicInfo.originalPrice) ?? null;
           out.discount = (item && item.discount) ?? (mock && mock.basicInfo && mock.basicInfo.discount) ?? null;
@@ -5977,7 +6294,8 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
           /* 市场调研表/Sif/MCP 都没拿到主图时，用亚马逊商品页抓取兜底 */
           if (!out.imageUrl) {
             try {
-              const res = await fetch("api/amazon/product-page?asin=" + encodeURIComponent(String(asin).toUpperCase()), {
+              const res = await fetchLocalApi("api/amazon/product-page?asin=" + encodeURIComponent(String(asin).toUpperCase()) +
+                "&site=" + encodeURIComponent(site), {
                 method: "GET",
                 signal: AbortSignal.timeout(Math.max(8, Number((manager && manager.config && manager.config.general && manager.config.general.timeout) || 10) * 1000)),
               });
@@ -6024,7 +6342,8 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
           /* 若本地目录/市场调研表缺失关键规格，去亚马逊商品页抓真实产品参数和包装信息兜底 */
           if (!out.productParams || !out.packageInfo || !out.packageSize || !out.packageWeight) {
             try {
-              const res = await fetch("api/amazon/product-page?asin=" + encodeURIComponent(String(asin).toUpperCase()), {
+              const res = await fetchLocalApi("api/amazon/product-page?asin=" + encodeURIComponent(String(asin).toUpperCase()) +
+                "&site=" + encodeURIComponent(normalizeMarketplaceSite(marketplace || (manager && manager.config && manager.config.general && manager.config.general.site) || "US")), {
                 method: "GET",
                 signal: AbortSignal.timeout(Math.max(8, Number((manager && manager.config && manager.config.general && manager.config.general.timeout) || 10) * 1000)),
               });
@@ -6117,11 +6436,11 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
             mergeReviewOutput(out, analyzeReviewsToFields(asin, structuredRows, "本地市场表原始评论"), false);
           }
           try {
-            const reviewPayload = await this._loadExternalReviews(asin);
+            const reviewPayload = await this._loadExternalReviews(asin, marketplace);
             const reviewRows = Array.isArray(reviewPayload.reviews) ? reviewPayload.reviews : [];
             if (reviewPayload.meta && (reviewPayload.meta.searchedFiles !== undefined || reviewPayload.meta.matchedFiles)) {
               const matched = Array.isArray(reviewPayload.meta.matchedFiles) ? reviewPayload.meta.matchedFiles : [];
-              this.addLog && this.addLog(asin, "reviewsData", "本地评论扫描：检查 " + (reviewPayload.meta.searchedFiles || 0) + " 个文件，命中 " + matched.length + " 个（" + reviewRows.length + " 条评论）" + (matched.length ? "，如 " + matched[0] : ""), "info");
+              manager?.addLog?.(asin, "reviewsData", "本地评论扫描：检查 " + (reviewPayload.meta.searchedFiles || 0) + " 个文件，命中 " + matched.length + " 个（" + reviewRows.length + " 条评论）" + (matched.length ? "，如 " + matched[0] : ""), "info");
             }
             const structuredRows = reviewRows.filter((row) => row && typeof row === "object" && (
               row.summary || row.sellingPoints || row.positiveReviews || row.negativeReviews ||
@@ -6149,24 +6468,42 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
           try {
             crawlInfo = await this._ensureAmazonReviewsCrawl(asin, marketplace);
             if (crawlInfo && crawlInfo.message) {
-              this.addLog && this.addLog(asin, "reviewsData", crawlInfo.message, "info");
+              manager?.addLog?.(asin, "reviewsData", crawlInfo.message, "info");
             }
             /* 再读一次 Skill 结果（可能已有历史 JSON，或 worker 极快写完） */
             try {
-              const again = await this._loadExternalReviews(asin);
+              const again = await this._loadExternalReviews(asin, marketplace);
               const rows2 = Array.isArray(again.reviews) ? again.reviews : [];
               if (rows2.length) {
                 mergeReviewOutput(out, analyzeReviewsToFields(asin, normalizeReviewRows(rows2, asin), "amazon-reviews-skill"), false);
               }
             } catch (err2) { /* ignore */ }
           } catch (err) {
-            this.addLog && this.addLog(asin, "reviewsData", "评论抓取入队失败：" + (err.message || err), "warn");
+            manager?.addLog?.(asin, "reviewsData", "评论抓取入队失败：" + (err.message || err), "warn");
           }
           const skillCount = Array.isArray(out.rawReviews) ? out.rawReviews.length : 0;
+          const crawlPending = crawlInfo && !crawlInfo.skipped && !crawlInfo.enough && skillCount < Math.min(crawlTarget, 80);
+          if (crawlPending) {
+            const pending = empty("reviewsData", asin, marketplace);
+            pending.found = true;
+            pending.analysisPending = true;
+            pending.rawReviews = Array.isArray(out.rawReviews) ? out.rawReviews : [];
+            pending.classificationStats = {
+              rawCount: skillCount,
+              total: skillCount,
+              pending: true,
+              target: crawlTarget,
+            };
+            pending.summary = [
+              crawlInfo.message,
+              "评论正在抓取中，当前已获取 " + skillCount + "/" + crawlTarget + " 条。基础信息已先完成；抓取完成后点击本列「刷新分析」，系统会只刷新 AI 文本分析，不重新查询基础信息。",
+            ].filter(Boolean).join("\n");
+            return pending;
+          }
           /* 商品页零星评论：仅作临时预览；全量未达标时仍展示，并保留抓取提示 */
           if (skillCount < Math.min(crawlTarget, 80)) {
             try {
-              const pageReviews = await this._loadAmazonPageReviews(asin);
+              const pageReviews = await this._loadAmazonPageReviews(asin, marketplace);
               if (pageReviews.length) {
                 const classified = analyzeReviewsToFields(
                   asin,
@@ -6184,7 +6521,8 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
            * 翻译成中文后交给 summarizeSellingPointsToFive 精炼为 5 条。 */
           if (!out.sellingPoints) {
             try {
-              const res = await fetch("api/amazon/product-page?asin=" + encodeURIComponent(String(asin).toUpperCase()), {
+              const res = await fetchLocalApi("api/amazon/product-page?asin=" + encodeURIComponent(String(asin).toUpperCase()) +
+                "&site=" + encodeURIComponent(normalizeMarketplaceSite(marketplace || (manager && manager.config && manager.config.general && manager.config.general.site) || "US")), {
                 method: "GET",
                 signal: AbortSignal.timeout(Math.max(8, Number((manager && manager.config && manager.config.general && manager.config.general.timeout) || 10) * 1000)),
               });
@@ -6193,7 +6531,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
                 const bullets = Array.isArray(page && page.sellingPoints) ? page.sellingPoints : [];
                 if (bullets.length) {
                   out.sellingPoints = bullets.map((line) => translateToChineseText(String(line || ""))).filter(Boolean).join("\n");
-                  this.addLog && this.addLog(asin, "reviewsData", "亚马逊商品页卖点：抓取 " + bullets.length + " 条五点描述原文并翻译为中文", "info");
+                  manager?.addLog?.(asin, "reviewsData", "亚马逊商品页卖点：抓取 " + bullets.length + " 条五点描述原文并翻译为中文", "info");
                 }
               }
             } catch (err) { /* 商品页卖点抓取失败时保留已有真实字段 */ }
@@ -6216,13 +6554,13 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         isConfigured() {
           const cfg = this.config || {};
           const mcpUrl = String(cfg.mcpServerUrl || "").trim();
-          return !!(mcpUrl && (String(cfg.apiKey || "").trim() || hasInlineAuth(mcpUrl) || isLocalProxyUrl(mcpUrl))) ||
-            !!(String(cfg.apiBaseUrl || "").trim() && String(cfg.apiKey2 || "").trim());
+          return !!(mcpUrl && (normalizeMcpToken(cfg.apiKey || "") || hasInlineAuth(mcpUrl) || isLocalProxyUrl(mcpUrl))) ||
+            !!(String(cfg.apiBaseUrl || "").trim() && normalizeMcpToken(cfg.apiKey2 || ""));
         }
         async _callMcp(action, params) {
           const cfg = this.config || {};
           const mcpUrl = String(cfg.mcpServerUrl || "").trim();
-          const mcpKey = String(cfg.apiKey || "").trim();
+          const mcpKey = normalizeMcpToken(cfg.apiKey || "");
           if (!mcpUrl || (!mcpKey && !hasInlineAuth(mcpUrl) && !isLocalProxyUrl(mcpUrl))) throw new ProviderNotConfiguredError("VOC MCP 未配置");
           const headers = { "Content-Type": "application/json", "Accept": "application/json, text/event-stream" };
           if (mcpKey) headers.Authorization = "Bearer " + mcpKey;
@@ -6237,7 +6575,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         async _callApi(action, params) {
           const cfg = this.config || {};
           const apiBase = String(cfg.apiBaseUrl || "").trim();
-          const apiKey = String(cfg.apiKey2 || "").trim();
+          const apiKey = normalizeMcpToken(cfg.apiKey2 || "");
           if (!apiBase || !apiKey) throw new ProviderNotConfiguredError("VOC API 未配置");
           const url = (apiBase.replace(/\/+$/, "") + "/" + String(action || "").replace(/^\/+/, "")).replace(/\/+$/, "");
           const res = await fetch(url, {
@@ -6251,9 +6589,9 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         async _request(action, params) {
           const cfg = this.config || {};
           const mcpUrl = String(cfg.mcpServerUrl || "").trim();
-          const mcpKey = String(cfg.apiKey || "").trim();
+          const mcpKey = normalizeMcpToken(cfg.apiKey || "");
           const apiBase = String(cfg.apiBaseUrl || "").trim();
-          const apiKey = String(cfg.apiKey2 || "").trim();
+          const apiKey = normalizeMcpToken(cfg.apiKey2 || "");
           const channels = [];
           if (mcpUrl && (mcpKey || hasInlineAuth(mcpUrl) || isLocalProxyUrl(mcpUrl))) channels.push("mcp");
           if (apiBase && apiKey) channels.push("api");
@@ -6306,7 +6644,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
             const raw = await this._request(["test_connection", "ping", "get_product_reviews"], { asin: "B0CFJJFLFY", marketplace: "US", ping: true });
             return { ok: true, status: "connected", message: "VOC 数据源连接成功", data: raw };
           } catch (err) {
-            return { ok: false, status: "failed", message: "连接失败：" + err.message };
+            return { ok: false, status: "failed", message: formatProviderConnectionError(err, "VOC") };
           }
         }
       }
@@ -6695,7 +7033,8 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
             const uniqueRows = merged.rawReviews.filter((row) => row && typeof row === "object");
             if (uniqueRows.length) {
               try {
-                const unified = await analyzeReviewsToFields(asin, uniqueRows, "多数据源合并去重评论");
+                const translatedRows = await translateReviewRowsForAnalysis(asin, marketplace, uniqueRows);
+                const unified = await analyzeReviewsToFields(asin, translatedRows, "多数据源合并去重评论");
                 unified.classificationStats = Object.assign({}, unified.classificationStats || {}, {
                   mergedUniqueTotal: uniqueRows.length,
                   crossSourceFilteredCount: merged.rawReviews.filteredCount || 0,
@@ -6761,7 +7100,8 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         }
         async fetchOne(asin, marketplace) {
           const safeAsin = String(asin || "").toUpperCase();
-          const key = CACHE_SCHEMA_VERSION + "|" + safeAsin + "|" + (marketplace || "US") + "|" + this.fingerprint();
+          const market = normalizeMarketplaceSite(marketplace || "US");
+          const key = CACHE_SCHEMA_VERSION + "|" + safeAsin + "|" + market + "|" + this.fingerprint();
           const cached = this._getCache(key);
           if (cached) {
             const ar = this.config.amazonReviews || {};
@@ -6769,11 +7109,16 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
             const rawLen = Array.isArray(raw) ? raw.length : 0;
             const target = Math.max(10, Number(ar.target) || 300);
             const sparse = ar.enabled !== false && ar.autoFetch !== false && rawLen < Math.min(target, 80);
-            if (!sparse) return Object.assign({}, cached, { asin, cached: true });
+            if (!sparse) {
+              /* 旧缓存可能来自未接入翻译的版本，命中缓存时也必须先中文化再展示。 */
+              await localizeProductDataToChinese(cached.data, safeAsin, market, this);
+              this._setCache(key, cached);
+              return Object.assign({}, cached, { asin, cached: true });
+            }
             this.addLog(safeAsin, "reviewsData", "缓存评论样本仅 " + rawLen + " 条（不足全量），忽略缓存并重新查询/入队抓取", "warn");
           }
           const result = {
-            asin: safeAsin, marketplace: marketplace || "US", matched: false,
+            asin: safeAsin, marketplace: market, matched: false,
             source: null, degraded: null, cached: false, fetchedAt: Date.now(),
             data: {}, logs: [], allFailed: false, totalMessages: [],
           };
@@ -6784,7 +7129,6 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
             ["keepaData", "getKeepaData"],
             ["reviewsData", "getReviewsData"],
           ];
-          const market = marketplace || "US";
           for (const [kind, method] of plan) {
             const fetched = await this._fetchKind(kind, method, safeAsin, market);
             result.data[kind] = fetched.data;
@@ -6792,6 +7136,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
             result.logs.push({ kind, messages: fetched.messages });
             result.totalMessages = result.totalMessages.concat(fetched.messages);
           }
+          await localizeProductDataToChinese(result.data, safeAsin, market, this);
           const basic = result.data.basicInfo;
           result.matched = !!(basic && (basic.found || basic.brand || basic.title));
           result.allFailed = !result.matched && !this._dataFound(result.data.salesData, "salesData") &&
@@ -6803,9 +7148,65 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
           if (result.matched) this._setCache(key, result);
           return result;
         }
+        async fetchOneCore(asin, marketplace) {
+          const safeAsin = String(asin || "").toUpperCase();
+          const market = normalizeMarketplaceSite(marketplace || "US");
+          const result = {
+            asin: safeAsin, marketplace: market, matched: false,
+            source: null, degraded: null, cached: false, fetchedAt: Date.now(),
+            data: {}, logs: [], allFailed: false, totalMessages: [],
+          };
+          const plan = [
+            ["basicInfo", "getProductBasicInfo"],
+            ["specs", "getProductSpecs"],
+            ["salesData", "getSalesData"],
+            ["keepaData", "getKeepaData"],
+          ];
+          for (const [kind, method] of plan) {
+            const fetched = await this._fetchKind(kind, method, safeAsin, market);
+            result.data[kind] = fetched.data;
+            result.source = result.source || fetched.source;
+            result.logs.push({ kind, messages: fetched.messages });
+            result.totalMessages = result.totalMessages.concat(fetched.messages);
+          }
+          result.data.reviewsData = empty("reviewsData", safeAsin, market);
+          result.data.reviewsData.found = true;
+          result.data.reviewsData.analysisPending = true;
+          result.data.reviewsData.summary = "基础信息、销量和趋势已先完成。评论数据正在独立抓取/读取中，完成后点击本列「刷新分析」。";
+          await localizeProductDataToChinese(result.data, safeAsin, market, this);
+          const basic = result.data.basicInfo;
+          result.matched = !!(basic && (basic.found || basic.brand || basic.title));
+          result.allFailed = !result.matched && !this._dataFound(result.data.salesData, "salesData") &&
+            !this._dataFound(result.data.keepaData, "keepaData") && !this._dataFound(result.data.specs, "specs");
+          if (result.allFailed) {
+            this.addLog(safeAsin, null, "所有数据源均无法获取该ASIN基础/销量/趋势数据，请核对ASIN编号或检查接口配置", "err");
+          }
+          return result;
+        }
+        async fetchReviewsOnly(asin, marketplace) {
+          const safeAsin = String(asin || "").toUpperCase();
+          const market = normalizeMarketplaceSite(marketplace || "US");
+          const fetched = await this._fetchKind("reviewsData", "getReviewsData", safeAsin, market);
+          const result = {
+            asin: safeAsin,
+            marketplace: market,
+            matched: this._dataFound(fetched.data, "reviewsData"),
+            source: fetched.source,
+            cached: false,
+            done: true,
+            loading: false,
+            error: false,
+            data: { reviewsData: fetched.data },
+            logs: [{ kind: "reviewsData", messages: fetched.messages }],
+            totalMessages: fetched.messages,
+          };
+          await localizeReviewsDataToChinese(result.data.reviewsData, safeAsin, market, this);
+          return result;
+        }
         async queryBatch(asins, callbacks) {
           this.abort = new AbortController();
           const cfg = this.config.general || {};
+          const site = normalizeMarketplaceSite(cfg.site || "US");
           const concurrency = Math.max(1, Math.min(6, Number(cfg.concurrency) || 3));
           const total = asins.length;
           const start = performance.now();
@@ -6817,7 +7218,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
             while (queue.length && !this.abort.signal.aborted) {
               const asin = queue.shift();
               try {
-                const res = await this.fetchOne(asin, cfg.site || "US");
+                const res = await this.fetchOne(asin, site);
                 if (this.abort.signal.aborted) return;
                 results[asin] = Object.assign({}, res, { ok: true });
                 success++;
@@ -6855,6 +7256,78 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
       const COL_COUNT = 6;
       const COLUMN_KEYS = ["A", "B", "C", "D", "E", "F"];
       const columns = [];
+      const COLUMN_STATE_KEY = "amz_column_state_v2";
+
+      function cloneJson(value) {
+        try { return JSON.parse(JSON.stringify(value)); } catch (err) { return null; }
+      }
+      function productForColumnState(product) {
+        const copy = cloneJson(product);
+        if (!copy || typeof copy !== "object") return null;
+        copy.loading = false;
+        if (copy.data && copy.data.basicInfo && /^data:image\//i.test(String(copy.data.basicInfo.imageUrl || ""))) {
+          copy.data.basicInfo.imageUrl = "";
+        }
+        const reviews = copy.data && copy.data.reviewsData;
+        if (reviews && Array.isArray(reviews.rawReviews)) {
+          reviews.rawReviewSnapshotCount = reviews.rawReviews.totalUnique || reviews.rawReviews.length || 0;
+          reviews.rawReviews = [];
+        }
+        return copy;
+      }
+      function loadColumnStates() {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(COLUMN_STATE_KEY) || "{}");
+          return parsed && typeof parsed === "object" ? parsed : {};
+        } catch (err) { return {}; }
+      }
+      function saveColumnStates(map) {
+        try { localStorage.setItem(COLUMN_STATE_KEY, JSON.stringify(map || {})); } catch (err) { console.warn("列状态保存失败", err); }
+      }
+      function saveColumnState(index) {
+        const column = columns[index];
+        if (!column) return;
+        const map = loadColumnStates();
+        const asin = String(column.asin || (column.product && column.product.asin) || "").trim().toUpperCase();
+        const site = normalizeMarketplaceSite((column.product && column.product.marketplace) || manager.config.general.site || "US");
+        if (!asin && !column.product) {
+          delete map[index];
+          saveColumnStates(map);
+          return;
+        }
+        map[index] = {
+          schemaVersion: CACHE_SCHEMA_VERSION,
+          savedAt: Date.now(),
+          site,
+          asin,
+          product: productForColumnState(column.product),
+        };
+        saveColumnStates(map);
+      }
+      function clearColumnState(index) {
+        const map = loadColumnStates();
+        delete map[index];
+        saveColumnStates(map);
+      }
+      function restoreColumnState(index, site) {
+        const snap = loadColumnStates()[index];
+        if (!snap || snap.schemaVersion !== CACHE_SCHEMA_VERSION) return false;
+        if (snap.site && normalizeMarketplaceSite(snap.site) !== normalizeMarketplaceSite(site || "US")) return false;
+        const column = columns[index];
+        if (!column) return false;
+        const asin = String(snap.asin || (snap.product && snap.product.asin) || "").trim().toUpperCase();
+        column.asin = asin;
+        column.product = snap.product ? Object.assign({}, snap.product, { loading: false, done: !!snap.product.done, error: false }) : null;
+        if (column.product) {
+          column.product.asin = asin || column.product.asin || "";
+          column.product.marketplace = normalizeMarketplaceSite(column.product.marketplace || site || "US");
+        }
+        column.loading = false;
+        const input = document.getElementById("col-input-" + index);
+        if (input) input.value = asin;
+        renderColumn(column);
+        return true;
+      }
 
       /* 竞品字段模型：与后续 MCP/API 返回的单条竞品对象一致 */
       const FIELD_KEYS = [
@@ -7161,7 +7634,25 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
       function formatProductParamValue(label, value) {
         let text = translateToChineseText(value);
         if (label === "包装内容") {
-          text = text.replace(/\bAssembly Guide\b/gi, "组装说明").replace(/\bInstallation Tool\b/gi, "安装工具");
+          text = text
+            .replace(/\bPackage Includes?\b/gi, "包装包含")
+            .replace(/\bPackage Contents?\b/gi, "包装内容")
+            .replace(/\bIncluded Components?\b/gi, "包含组件")
+            .replace(/\bAssembly Guide\b/gi, "组装说明")
+            .replace(/\bInstallation Tool\b/gi, "安装工具")
+            .replace(/\bInstruction Manual\b/gi, "说明书")
+            .replace(/\bUser Manual\b/gi, "用户手册")
+            .replace(/\bAccessory Set\b/gi, "配件套装")
+            .replace(/\bAccessories\b/gi, "配件")
+            .replace(/\bKitchen Dishes Toys\b/gi, "厨房餐具玩具")
+            .replace(/\bKitchen Decals\b/gi, "厨房贴纸")
+            .replace(/\bPretend Play\b/gi, "角色扮演")
+            .replace(/\bToy Accessories\b/gi, "玩具配件")
+            .replace(/\bHandles?\b/gi, "手柄")
+            .replace(/\bResistance Bands?\b/gi, "阻力带")
+            .replace(/\bDoor Anchor\b/gi, "门锚")
+            .replace(/\bAnkle Straps?\b/gi, "脚踝绑带")
+            .replace(/\bAb Roller Wheels?\b/gi, "健腹轮");
         }
         return normalizeEnglishPeriod(convertMeasurementsToMetric(text));
       }
@@ -7208,11 +7699,28 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
           ["Maximum Weight Recommendation:", "最大建议承重："], ["Maximum Weight Recommendation", "最大建议承重"],
           ["Item Package Dimensions L x W x H", "包装尺寸（长 x 宽 x 高）"], ["Package Dimensions", "包装尺寸"],
           ["Item Weight", "产品重量"], ["Package Weight", "包装重量"], ["Included Components", "包含组件"],
+          ["Package Includes", "包装包含"], ["Package Include", "包装包含"], ["Package Contents", "包装内容"], ["Package Content", "包装内容"],
+          ["Instruction Manual", "说明书"], ["User Manual", "用户手册"], ["Accessory Set", "配件套装"], ["Accessories", "配件"],
+          ["Kitchen Dishes Toys", "厨房餐具玩具"], ["Kitchen Decals", "厨房贴纸"], ["Pretend Play", "角色扮演"], ["Toy Accessories", "玩具配件"],
+          ["Wheeled Cooler", "带轮保温箱"], ["Rolling Cooler", "带轮保温箱"], ["Hard Cooler", "硬壳保温箱"], ["Cooler", "保温箱"],
+          ["Cup Holder", "杯架"], ["Cup Holders", "杯架"], ["Drain Plug", "排水塞"], ["Leak Resistant", "防漏"], ["Water Repellent", "防泼水"],
+          ["Insulated", "保温"], ["Polyurethane", "聚氨酯"], ["Hiking", "徒步"], ["Camping", "露营"], ["Beach", "海滩"], ["Fishing", "钓鱼"],
+          ["Rock Grey", "岩灰色"], ["Rock Gray", "岩灰色"], ["Wichita", "威奇托"],
+          ["Handle", "手柄"], ["Handles", "手柄"], ["Board", "板"], ["Boards", "板"],
           ["Material Type", "材质"], ["Frame Material Type", "框架材质"], ["Top Material Type", "台面材质"],
-          ["Black", "黑色"], ["Blue", "蓝色"], ["Red", "红色"], ["Green", "绿色"], ["Gray", "灰色"], ["White", "白色"],
+          ["Black", "黑色"], ["Blue", "蓝色"], ["Red", "红色"], ["Green", "绿色"], ["Gray", "灰色"], ["Grey", "灰色"], ["White", "白色"],
+          ["Yellow", "黄色"], ["Orange", "橙色"], ["Purple", "紫色"], ["Pink", "粉色"], ["Brown", "棕色"], ["Silver", "银色"],
           ["Glass", "玻璃"], ["Metal", "金属"], ["Engineered Wood", "工程木"], ["Wood", "木材"], ["Fabric", "布料"], ["Plastic", "塑料"],
           ["Polypropylene (PP)", "聚丙烯（PP）"], ["Polypropylene", "聚丙烯"], ["Acrylonitrile Butadiene Styrene", "ABS塑料"],
           ["ABS Plastic", "ABS塑料"], ["Alloy Steel", "合金钢"], ["PVC", "聚氯乙烯（PVC）"], ["Polyethylene", "聚乙烯"], ["Fixed", "固定式"], ["Rotating", "旋转式"],
+          ["Kautschukholz", "橡胶木"], ["Legierter Stahl", "合金钢"], ["Legierter Edelstahl", "合金不锈钢"], ["Edelstahl", "不锈钢"],
+          ["Kunststoff", "塑料"], ["Gummi", "橡胶"], ["Stahl", "钢"], ["Holz", "木材"], ["Polypropylen", "聚丙烯"], ["Polyethylen", "聚乙烯"],
+          ["Produktabmessungen", "产品尺寸"], ["Artikelgewicht", "产品重量"], ["Enthaltene Komponenten", "包含组件"], ["Materialart", "材质"],
+          ["Bois d'hévéa", "橡胶木"], ["Bois dhevea", "橡胶木"], ["Acier allié", "合金钢"], ["Acier inoxydable", "不锈钢"],
+          ["Caoutchouc", "橡胶"], ["Plastique", "塑料"], ["Bois", "木材"], ["Dimensions du produit", "产品尺寸"], ["Poids de l'article", "产品重量"], ["Composants inclus", "包含组件"],
+          ["Madera de caucho", "橡胶木"], ["Acero aleado", "合金钢"], ["Acero inoxidable", "不锈钢"], ["Caucho", "橡胶"], ["Plástico", "塑料"],
+          ["Dimensiones del producto", "产品尺寸"], ["Peso del producto", "产品重量"], ["Componentes incluidos", "包含组件"],
+          ["合金鋼", "合金钢"], ["ステンレス鋼", "不锈钢"], ["プラスチック", "塑料"], ["ゴム", "橡胶"], ["木材", "木材"],
           ["Powerful Upper Body", "上肢力量训练"], ["Sturdy & Slip-Resistant", "稳固防滑"], ["Slip-Resistant", "防滑"],
           ["Ergonomical Design", "人体工学设计"], ["Ergonomic Design", "人体工学设计"], ["Easy to Use", "易于使用"],
           ["Portable", "便携"], ["Foldable", "可折叠"], ["Resistance Bands", "阻力带"], ["Resistance Band", "阻力带"],
@@ -7269,6 +7777,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
           .replace(/稳固\s*和\s*防滑/g, "稳固防滑")
           .replace(/阻力带\s*断裂/g, "阻力带断裂")
           .replace(/提升材质\s*和\s*清晰说明书/g, "提升材质并完善说明书")
+          .replace(/冷却器/g, "保温箱")
           .replace(/([一-龥])\s*:\s*/g, "$1：")
           .replace(/：\s+/g, "：")
           .replace(/,\s*/g, "，")
@@ -7279,6 +7788,146 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
           .replace(/\n{3,}/g, "\n\n")
           .trim();
         return text;
+      }
+      const GOOGLE_TEXT_LOCALIZE_CACHE = new Map();
+      function needsGoogleChineseTranslation(value) {
+        const text = normalizeTextValue(value);
+        if (!text) return false;
+        const probe = text
+          .replace(/\b(?:cm|kg|mm|m|g|lb|lbs|in|inch|inches|x|L|W|H)\b/gi, "")
+          .replace(/[\d\s.,:：;；，。/\\()[\]{}<>+\-*"'#$%&|×]+/g, "");
+        if (!probe) return false;
+        const hasChinese = /[\u4e00-\u9fff]/.test(probe);
+        const foreignChars = (probe.match(/[A-Za-zÀ-ÖØ-öø-ÿ\u3040-\u30ff\uac00-\ud7af]/g) || []).length;
+        if (!foreignChars) return false;
+        const chineseChars = (probe.match(/[\u4e00-\u9fff]/g) || []).length;
+        return !hasChinese || foreignChars >= Math.max(4, chineseChars * 0.35);
+      }
+      async function translateTextBlocksToChinese(blocks, asin, marketplace, logKind, managerRef) {
+        const source = (Array.isArray(blocks) ? blocks : []).map((value) => normalizeTextValue(value));
+        const output = source.map((value) => normalizeEnglishPeriod(convertMeasurementsToMetric(translateToChineseText(value))));
+        const pending = [];
+        const uniqueTexts = [];
+        const uniqueIndex = new Map();
+        output.forEach((value, index) => {
+          if (!needsGoogleChineseTranslation(value)) return;
+          const key = value.trim();
+          if (!uniqueIndex.has(key)) {
+            uniqueIndex.set(key, uniqueTexts.length);
+            uniqueTexts.push(key);
+          }
+          pending.push({ index, unique: uniqueIndex.get(key) });
+        });
+        if (!pending.length) return output;
+        const cachePrefix = normalizeMarketplaceSite(marketplace || "US") + "|";
+        const toRequest = [];
+        const resolved = new Map();
+        uniqueTexts.forEach((text, index) => {
+          const cacheKey = cachePrefix + text;
+          if (GOOGLE_TEXT_LOCALIZE_CACHE.has(cacheKey)) {
+            resolved.set(index, GOOGLE_TEXT_LOCALIZE_CACHE.get(cacheKey));
+          } else {
+            toRequest.push({ index, text, cacheKey });
+          }
+        });
+        if (toRequest.length) {
+          try {
+            const res = await fetchLocalApi("api/translate/reviews", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                site: normalizeMarketplaceSite(marketplace || "US"),
+                sourceLang: "auto",
+                reviews: toRequest.map((item) => ({ content: item.text })),
+              }),
+              signal: AbortSignal.timeout(Math.max(15000, Math.min(60000, toRequest.length * 12000))),
+            });
+            if (!res.ok) throw new Error("HTTP " + res.status);
+            const payload = await res.json();
+            const translated = Array.isArray(payload.translated) ? payload.translated : [];
+            translated.forEach((item, offset) => {
+              const req = toRequest[offset];
+              if (!req) return;
+              const text = normalizeTextValue(item && (item.content || item.text || item.body || item.reviewText || item.comment));
+              if (!text) return;
+              const finalText = normalizeEnglishPeriod(convertMeasurementsToMetric(translateToChineseText(text)));
+              resolved.set(req.index, finalText);
+              GOOGLE_TEXT_LOCALIZE_CACHE.set(req.cacheKey, finalText);
+            });
+            if (payload && payload.translatedCount) {
+              (managerRef || manager)?.addLog?.(asin, logKind || "reviewsData", "Google 代理中文化字段 " + payload.translatedCount + "/" + toRequest.length + " 项", "info");
+            }
+          } catch (err) {
+            (managerRef || manager)?.addLog?.(asin, logKind || "reviewsData", "Google 字段翻译失败，已保留原文并使用本地词库：" + (err.message || err), "warn");
+          }
+        }
+        pending.forEach((item) => {
+          if (resolved.has(item.unique)) output[item.index] = resolved.get(item.unique);
+        });
+        return output;
+      }
+      function flattenOptimizationDirectionForTranslate(value) {
+        if (!value) return { type: "empty", values: [] };
+        if (typeof value === "string") return { type: "string", values: [value] };
+        if (Array.isArray(value)) return { type: "array", values: value.map((item) => normalizeTextValue(item)) };
+        if (typeof value === "object") {
+          return {
+            type: "object",
+            source: value,
+            values: [
+              normalizeTextValue(value.summary),
+              normalizeTextValue(value.corePainPoints ?? value.corePainPoint ?? value.painPoints ?? value.painPoint),
+              normalizeTextValue(value.upgradeSuggestions ?? value.upgradeSuggestion ?? value.suggestions ?? value.recommendations),
+            ],
+          };
+        }
+        return { type: "string", values: [String(value)] };
+      }
+      function restoreOptimizationDirectionAfterTranslate(meta, values) {
+        if (!meta || meta.type === "empty") return null;
+        if (meta.type === "string") return values[0] || "";
+        if (meta.type === "array") return values.filter(Boolean);
+        if (meta.type === "object") {
+          const src = meta.source || {};
+          const out = Object.assign({}, src);
+          if (values[0]) out.summary = values[0];
+          const core = src.corePainPoints ?? src.corePainPoint ?? src.painPoints ?? src.painPoint;
+          const upgrades = src.upgradeSuggestions ?? src.upgradeSuggestion ?? src.suggestions ?? src.recommendations;
+          if (core !== undefined && values[1]) out.corePainPoints = splitSummaryLines(values[1]);
+          if (upgrades !== undefined && values[2]) out.upgradeSuggestions = splitSummaryLines(values[2]);
+          return out;
+        }
+        return values[0] || "";
+      }
+      async function localizeReviewsDataToChinese(reviewsData, asin, marketplace, managerRef) {
+        if (!reviewsData || typeof reviewsData !== "object") return reviewsData;
+        const fields = ["summary", "sellingPoints", "positiveReviews", "negativeReviews", "improvementPoints", "targetAudience", "useScenarios"];
+        const values = fields.map((key) => reviewsData[key]);
+        const directionMeta = flattenOptimizationDirectionForTranslate(reviewsData.optimizationDirection);
+        const translated = await translateTextBlocksToChinese(values.concat(directionMeta.values), asin, marketplace, "reviewsData", managerRef);
+        fields.forEach((key, index) => {
+          if (translated[index]) reviewsData[key] = translated[index];
+        });
+        const directionValues = translated.slice(fields.length);
+        reviewsData.optimizationDirection = restoreOptimizationDirectionAfterTranslate(directionMeta, directionValues) || reviewsData.optimizationDirection;
+        return reviewsData;
+      }
+      async function localizeSpecsDataToChinese(specs, asin, marketplace, managerRef) {
+        if (!specs || typeof specs !== "object") return specs;
+        const fields = ["material", "color", "productSize", "productWeight", "includedComponents", "packageSize", "packageWeight", "productParams", "packageInfo"];
+        const translated = await translateTextBlocksToChinese(fields.map((key) => specs[key]), asin, marketplace, "specs", managerRef);
+        fields.forEach((key, index) => {
+          if (translated[index]) specs[key] = normalizeEnglishPeriod(convertMeasurementsToMetric(translateToChineseText(translated[index])));
+        });
+        return specs;
+      }
+      async function localizeProductDataToChinese(data, asin, marketplace, managerRef) {
+        if (!data || typeof data !== "object") return data;
+        await Promise.all([
+          localizeSpecsDataToChinese(data.specs, asin, marketplace, managerRef),
+          localizeReviewsDataToChinese(data.reviewsData, asin, marketplace, managerRef),
+        ]);
+        return data;
       }
       function hasAnyText(text, words) {
         const lower = String(text || "").toLowerCase();
@@ -7331,6 +7980,19 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         if (digitCount > 12 && meaningfulText.length < 6) return "";
         return translateToChineseText(raw);
       }
+      function normalizeDisplayChineseText(value) {
+        return normalizeEnglishPeriod(convertMeasurementsToMetric(translateToChineseText(value)));
+      }
+      function normalizeDisplayObjectToChinese(obj) {
+        [
+          "变体", "产品参数信息", "包装尺寸及重量",
+          "AI评论分析", "产品卖点", "好评点", "差评点",
+          "待改善点", "使用人群", "使用场景", "优化方向",
+        ].forEach((key) => {
+          if (obj[key]) obj[key] = normalizeDisplayChineseText(obj[key]);
+        });
+        return obj;
+      }
 
       function buildProductFromResult(p) {
         const obj = emptyProduct(p.asin);
@@ -7342,7 +8004,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         obj["品牌"] = b.brand || "";
         obj["图片"] = b.imageUrl || "";
         obj["ASIN"] = p.asin;
-        obj["链接"] = b.url || ("https://www.amazon.com/dp/" + p.asin);
+        obj["链接"] = b.url || amazonProductUrl(p.asin, p.marketplace);
         obj["标题"] = b.title || "";
         obj["售价"] = b.price !== null && b.price !== undefined
           ? "$" + b.price + (b.originalPrice ? "（原价 $" + b.originalPrice + "）" : "") + (b.discount ? "，-" + b.discount + "%" : "")
@@ -7365,14 +8027,27 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         obj["30天销量(畅销变体)"] = s.sales30d !== null && s.sales30d !== undefined ? String(s.sales30d) : "";
         obj["历史月销"] = formatMonthlySalesDisplay(s.monthlySalesText || s.monthlySales);
         obj["Keepa趋势"] = k.priceTrend && k.priceTrend.length ? "价格/BSR 趋势数据" : "";
-        obj["AI评论分析"] = translateToChineseText(r.summary || "");
-        obj["产品卖点"] = summarizeSellingPointsToFive(r.sellingPoints || "");
-        obj["好评点"] = capReviewPointsToFive(r.positiveReviews);
-        obj["差评点"] = capReviewPointsToFive(r.negativeReviews);
-        obj["待改善点"] = capReviewPointsToFive(r.improvementPoints);
-        obj["使用人群"] = capReviewPointsToFive(r.targetAudience);
-        obj["使用场景"] = capReviewPointsToFive(r.useScenarios);
-        obj["优化方向"] = translateToChineseText(formatOptimizationSummary(r.optimizationDirection) || formatOptimizationDirection(r.optimizationDirection));
+        if (r.analysisPending) {
+          const pendingLines = splitSummaryLines(r.summary).filter((line) => /全量评论|评论正在|抓取|刷新分析|Skill|队列|当前已获取/.test(line));
+          obj["AI评论分析"] = pendingLines.join("\n") || "评论正在抓取中。抓取完成后点击本列「刷新分析」，只刷新 AI 文本分析，不重新查询基础信息。";
+          obj["产品卖点"] = "";
+          obj["好评点"] = "";
+          obj["差评点"] = "";
+          obj["待改善点"] = "";
+          obj["使用人群"] = "";
+          obj["使用场景"] = "";
+          obj["优化方向"] = "";
+        } else {
+          obj["AI评论分析"] = translateToChineseText(r.summary || "");
+          obj["产品卖点"] = summarizeSellingPointsToFive(r.sellingPoints || "");
+          obj["好评点"] = capReviewPointsToFive(r.positiveReviews);
+          obj["差评点"] = capReviewPointsToFive(r.negativeReviews);
+          obj["待改善点"] = capReviewPointsToFive(r.improvementPoints);
+          obj["使用人群"] = capReviewPointsToFive(r.targetAudience);
+          obj["使用场景"] = capReviewPointsToFive(r.useScenarios);
+          obj["优化方向"] = translateToChineseText(formatOptimizationSummary(r.optimizationDirection) || formatOptimizationDirection(r.optimizationDirection));
+        }
+        normalizeDisplayObjectToChinese(obj);
         return obj;
       }
 
@@ -7800,7 +8475,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         html += '<div class="card-section"><div class="card-section-head blue">基础商品信息</div><div class="card-section-body">';
         html += rowHtml("品牌", obj["品牌"]);
         html += rowHtml("图片", image.src, { image: true, fallback: image.fallback || "" });
-        html += rowHtml("ASIN", obj["ASIN"], { link: true, href: obj["链接"] || ("https://www.amazon.com/dp/" + obj["ASIN"]) });
+        html += rowHtml("ASIN", obj["ASIN"], { link: true, href: obj["链接"] || amazonProductUrl(obj["ASIN"], obj["站点"] || obj["marketplace"]) });
         html += rowHtml("链接", obj["链接"], { link: true });
         html += rowHtml("标题", obj["标题"], { fold: true });
         html += rowHtml("售价", obj["售价"]);
@@ -7819,7 +8494,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         html += screenshotFieldHtml(column, "Keepa趋势", obj["Keepa趋势"], "Keepa趋势", "趋势截图位");
         html += '</div></div>';
 
-        html += '<div class="card-section"><div class="card-section-head red ai-head"><span>AI文本分析</span><button class="btn-import" type="button" data-review-import="' + column.index + '">导入评论文本</button></div><div class="card-section-body">';
+        html += '<div class="card-section"><div class="card-section-head red ai-head"><span>AI文本分析</span><div class="ai-actions"><button class="btn-review-refresh" type="button" data-review-refresh="' + column.index + '">刷新分析</button><button class="btn-import" type="button" data-review-import="' + column.index + '">导入评论文本</button></div></div><div class="card-section-body">';
         aiRows.forEach(([label, value]) => {
           if (label === "AI评论分析") {
             html += screenshotFieldHtml(column, label, value, label, "AI分析 + 截图位", { fold: true, uid: uid + "-" + label });
@@ -7946,15 +8621,16 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         p.done = true;
         p.source = p.source || "人工编辑";
         if (!p.data) p.data = {};
-        const b = p.data.basicInfo = p.data.basicInfo || empty("basicInfo", p.asin, "US");
-        const s = p.data.salesData = p.data.salesData || empty("salesData", p.asin, "US");
-        const k = p.data.keepaData = p.data.keepaData || empty("keepaData", p.asin, "US");
-        const r = p.data.reviewsData = p.data.reviewsData || empty("reviewsData", p.asin, "US");
-        const sp = p.data.specs = p.data.specs || empty("specs", p.asin, "US");
+        const currentSite = normalizeMarketplaceSite(p.marketplace || manager.config.general.site || "US");
+        const b = p.data.basicInfo = p.data.basicInfo || empty("basicInfo", p.asin, currentSite);
+        const s = p.data.salesData = p.data.salesData || empty("salesData", p.asin, currentSite);
+        const k = p.data.keepaData = p.data.keepaData || empty("keepaData", p.asin, currentSite);
+        const r = p.data.reviewsData = p.data.reviewsData || empty("reviewsData", p.asin, currentSite);
+        const sp = p.data.specs = p.data.specs || empty("specs", p.asin, currentSite);
         b.found = true;
         b.brand = fields["品牌"] || null;
         b.title = fields["标题"] || null;
-        b.url = fields["链接"] || ("https://www.amazon.com/dp/" + (fields["ASIN"] || p.asin));
+        b.url = fields["链接"] || amazonProductUrl(fields["ASIN"] || p.asin, fields["站点"] || p.marketplace);
         const priceMatch = String(fields["售价"] || "").match(/\$?([\d,]+(?:\.\d+)?)/);
         b.price = priceMatch ? Number(priceMatch[1].replace(/,/g, "")) : null;
         b.originalPrice = null;
@@ -8014,6 +8690,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         setColumnOptimizationDirection(column);
         renderColumn(column);
         renderOptimizationSummary();
+        saveColumnState(index);
         showToast("竞品 " + COLUMN_KEYS[index] + " 数据已保存");
       }
 
@@ -8109,7 +8786,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         const form = new FormData();
         form.append("file", file, file.name || "reviews-upload");
         const url = "api/local/reviews/upload?asin=" + encodeURIComponent(asin || "");
-        const res = await fetch(url, { method: "POST", body: form });
+        const res = await fetchLocalApi(url, { method: "POST", body: form });
         let payload = null;
         try { payload = await res.json(); } catch (err) { payload = null; }
         if (!res.ok) throw new Error((payload && payload.error) || ("本地评论解析接口 HTTP " + res.status));
@@ -8260,16 +8937,19 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
           p.data.reviewsData = empty("reviewsData", asin, manager.config.general.site || "US");
           setReviewImportProgress(true, "正在分析 0/" + reviews.length + " 条评论...", 0);
           if (reviews.length) {
-            const classified = reviews.length >= 300
-              ? await analyzeReviewsToFieldsAsync(asin, reviews, "人工导入评论文本", (done, total) => {
+            setReviewImportProgress(true, "正在翻译评论为中文...", 5);
+            const translatedReviews = await translateReviewRowsForAnalysis(asin, manager.config.general.site || "US", reviews);
+            const classified = translatedReviews.length >= 300
+              ? await analyzeReviewsToFieldsAsync(asin, translatedReviews, "人工导入评论文本", (done, total) => {
                 setReviewImportProgress(true, "正在分析 " + done + "/" + total + " 条评论...", total ? (done * 100 / total) : 0);
               })
-              : analyzeReviewsToFields(asin, reviews, "人工导入评论文本");
+              : analyzeReviewsToFields(asin, translatedReviews, "人工导入评论文本");
             mergeReviewOutput(p.data.reviewsData, classified, true);
           }
           structuredPayloads.forEach((row) => {
             mergeReviewOutput(p.data.reviewsData, normalizeReviewsPayload(asin, manager.config.general.site || "US", row), false);
           });
+          await localizeProductDataToChinese(p.data, asin, normalizeMarketplaceSite(manager.config.general.site || "US"), manager);
           setColumnOptimizationDirection(column);
           const fields = productToEditFields(column);
           const map = loadManualEdits();
@@ -8279,10 +8959,188 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
           closeReviewImport();
           renderColumn(column);
           renderOptimizationSummary();
+          saveColumnState(index);
           showToast("已按评论文本自动分类并写入竞品 " + COLUMN_KEYS[index]);
         } catch (err) {
           setReviewImportProgress(false, "正在分析评论...", 0);
           showToast(err.message || "评论导入失败");
+        }
+      }
+
+      function extractReviewsFromAnyPayload(payload, asin) {
+        if (!payload) return [];
+        if (Array.isArray(payload)) return normalizeReviewRows(payload, asin);
+        if (payload && typeof payload === "object") {
+          const rows = payload.rawReviews ?? payload.reviews ?? payload.items ?? payload.rows ?? payload.data ?? payload.comments ?? payload.commentList ?? payload.reviewList ?? payload.reviewRows;
+          return normalizeReviewRows(rows, asin);
+        }
+        return normalizeReviewRows(payload, asin);
+      }
+      function appendApiParam(url, key, value) {
+        if (value === null || value === undefined || value === "") return url;
+        const re = new RegExp("[?&]" + escapeRegExp(key) + "=", "i");
+        if (re.test(url)) return url;
+        return url + (url.includes("?") ? "&" : "?") + key + "=" + encodeURIComponent(String(value));
+      }
+      async function loadColumnReviewRowsForAnalysis(asin, site) {
+        const upper = String(asin || "").trim().toUpperCase();
+        const market = normalizeMarketplaceSite(site || manager.config.general.site || "US");
+        const signatureSet = new Set();
+        const rows = [];
+        const messages = [];
+        let rawCount = 0;
+        let filteredCount = 0;
+        const addRows = (label, sourceRows, meta) => {
+          const normalized = normalizeReviewRows(sourceRows, upper);
+          rawCount += normalized.length;
+          const added = dedupeAgainst(normalized, signatureSet, upper);
+          filteredCount += added.duplicateCount || 0;
+          rows.push(...added);
+          const sourceMsg = label + "：返回 " + normalized.length + " 条，新增 " + added.length + " 条，过滤重复 " + (added.duplicateCount || 0) + " 条";
+          messages.push(sourceMsg);
+          manager.addLog(upper, "reviewsData", sourceMsg + (meta ? "；" + meta : ""), added.length ? "info" : "warn");
+        };
+
+        const localUrl = appendApiParam(appendApiParam("api/local/reviews", "asin", upper), "site", market);
+        try {
+          const res = await fetchLocalApi(appendApiParam(localUrl, "_", Date.now()), { signal: AbortSignal.timeout(45000) });
+          const payload = await res.json();
+          if (!res.ok) throw new Error((payload && payload.error) || ("HTTP " + res.status));
+          const localRows = extractReviewsFromAnyPayload(payload, upper);
+          const matched = Array.isArray(payload.matchedFiles) ? payload.matchedFiles.length : 0;
+          addRows(
+            "本地评论文件/amazon-reviews-skill",
+            localRows,
+            "扫描 " + (payload.searchedFiles || 0) + " 个文件，命中 " + matched + " 个" + (payload.skill && payload.skill.count ? "，Skill 已有 " + payload.skill.count + " 条" : "")
+          );
+        } catch (err) {
+          manager.addLog(upper, "reviewsData", "本地评论读取失败：" + (err.message || err), "warn");
+        }
+
+        const chain = manager.providerChain("reviewsData").filter((id) => id !== "local");
+        for (const id of chain) {
+          const resolved = manager.resolve(id);
+          if (resolved.degraded) {
+            manager.addLog(upper, "reviewsData", "刷新分析跳过 " + id + "：" + resolved.reason, "warn");
+            continue;
+          }
+          try {
+            const provider = resolved.provider;
+            manager.addLog(upper, "reviewsData", "刷新分析调用 " + provider.label + " 读取原始评论", "info");
+            const data = await manager._callMethod(provider, "getReviewsData", upper, market);
+            const providerRows = extractReviewsFromAnyPayload(data, upper);
+            if (providerRows.length) {
+              addRows(provider.label, providerRows, "来自已配置 MCP/API");
+            } else if (manager._dataFound(data, "reviewsData")) {
+              manager.addLog(upper, "reviewsData", provider.label + " 返回了结构化摘要但没有原始评论文本，刷新分析不采纳该摘要，避免串用旧结论", "warn");
+            } else {
+              manager.addLog(upper, "reviewsData", provider.label + " 未返回当前 ASIN 的评论文本", "warn");
+            }
+          } catch (err) {
+            manager.addLog(upper, "reviewsData", id + " 评论读取失败：" + (err.message || err), "warn");
+          }
+        }
+
+        const ar = manager.config.amazonReviews || {};
+        const target = Math.max(10, Number(ar.target) || 300);
+        if (rows.length < Math.min(target, 80)) {
+          try {
+            const pageUrl = "api/amazon/page-reviews?asin=" + encodeURIComponent(upper) + "&site=" + encodeURIComponent(market);
+            const res = await fetchLocalApi(pageUrl, { signal: AbortSignal.timeout(35000) });
+            const payload = await res.json();
+            if (res.ok) {
+              addRows("亚马逊商品页评论预览", Array.isArray(payload.reviews) ? payload.reviews : [], "仅作为真实页面少量补充");
+            }
+          } catch (err) {
+            manager.addLog(upper, "reviewsData", "亚马逊商品页评论预览读取失败：" + (err.message || err), "warn");
+          }
+        }
+        return { rows, rawCount, filteredCount, messages };
+      }
+      async function refreshColumnReviewAnalysis(index) {
+        const column = columns[index];
+        if (!column) return;
+        const input = document.getElementById("col-input-" + index);
+        const asin = String((input && input.value) || column.asin || (column.product && column.product.asin) || "").trim().toUpperCase();
+        if (!asin) {
+          showToast("请先填写本列 ASIN");
+          return;
+        }
+        const site = normalizeMarketplaceSite(manager.config.general.site || "US");
+        column.asin = asin;
+        if (input) input.value = asin;
+        const p = ensureColumnProduct(column);
+        p.asin = asin;
+        p.marketplace = site;
+        p.matched = true;
+        p.source = uniqueTextItems([p.source || "本地数据源", "评论刷新分析"]).join(" · ");
+        p.data.reviewsData = empty("reviewsData", asin, site);
+        p.data.reviewsData.found = true;
+        p.data.reviewsData.analysisPending = true;
+        p.data.reviewsData.summary = "正在读取当前 ASIN（" + asin + "）在 " + site + " 站点的原始评论，并准备重新分析。";
+        renderColumn(column);
+        updateStatusText("正在刷新 " + COLUMN_KEYS[index] + " 列评论分析：" + asin);
+        try {
+          const loaded = await loadColumnReviewRowsForAnalysis(asin, site);
+          if (!loaded.rows.length) {
+            p.data.reviewsData = empty("reviewsData", asin, site);
+            p.data.reviewsData.found = false;
+            p.data.reviewsData.summary = "无数据：当前 ASIN 未从已配置 MCP/API、本地评论文件或商品页预览中读取到原始评论。请等待抓取完成，或检查 ASIN、站点和评论账号池配置。";
+            manager.addLog(asin, "reviewsData", "刷新分析无可用评论：所有评论来源均未返回当前 ASIN 的原始评论文本", "err");
+          } else {
+            manager.addLog(asin, "reviewsData", "开始翻译并分析去重后的当前 ASIN 评论：" + loaded.rows.length + " 条", "info");
+            const translatedRows = await translateReviewRowsForAnalysis(asin, site, loaded.rows);
+            const analyzed = translatedRows.length >= 300
+              ? await analyzeReviewsToFieldsAsync(asin, translatedRows, "当前 ASIN 全量评论刷新分析", (done, total) => {
+                p.data.reviewsData.summary = "正在分析当前 ASIN 评论 " + done + "/" + total + " 条，请稍候。";
+                if (done === total || done % 600 === 0) renderColumn(column);
+              })
+              : analyzeReviewsToFields(asin, translatedRows, "当前 ASIN 评论刷新分析");
+            analyzed.classificationStats = Object.assign({}, analyzed.classificationStats || {}, {
+              rawCount: loaded.rawCount || translatedRows.length,
+              total: translatedRows.length,
+              duplicateCount: loaded.filteredCount || 0,
+              mergedUniqueTotal: translatedRows.length,
+              crossSourceFilteredCount: loaded.filteredCount || 0,
+              refreshOnly: true,
+            });
+            if (Array.isArray(analyzed.rawReviews)) {
+              analyzed.rawReviews.totalUnique = translatedRows.length;
+              analyzed.rawReviews.filteredCount = loaded.filteredCount || 0;
+            }
+            p.data.reviewsData = empty("reviewsData", asin, site);
+            mergeReviewOutput(p.data.reviewsData, analyzed, true);
+            manager.addLog(asin, "reviewsData", "刷新分析完成：最终真实有效评论 " + translatedRows.length + " 条，过滤重复 " + (loaded.filteredCount || 0) + " 条", "info");
+          }
+
+          if (!p.data.reviewsData.sellingPoints) {
+            try {
+              const res = await fetchLocalApi("api/amazon/product-page?asin=" + encodeURIComponent(asin) + "&site=" + encodeURIComponent(site), { signal: AbortSignal.timeout(30000) });
+              const page = await res.json();
+              const bullets = Array.isArray(page && page.sellingPoints) ? page.sellingPoints : [];
+              if (res.ok && bullets.length) {
+                p.data.reviewsData.sellingPoints = bullets.map((line) => translateToChineseText(String(line || ""))).filter(Boolean).join("\n");
+                manager.addLog(asin, "reviewsData", "刷新分析补充商品页五点描述 " + bullets.length + " 条，并写入产品卖点", "info");
+              }
+            } catch (err) {
+              manager.addLog(asin, "reviewsData", "商品页五点描述补充失败：" + (err.message || err), "warn");
+            }
+          }
+          await localizeProductDataToChinese(p.data, asin, site, manager);
+          setColumnOptimizationDirection(column);
+          renderColumn(column);
+          renderOptimizationSummary();
+          saveColumnState(index);
+          updateStatusText("竞品 " + COLUMN_KEYS[index] + " 评论分析已刷新");
+          showToast("评论分析已刷新：" + COLUMN_KEYS[index] + " 列");
+        } catch (err) {
+          p.data.reviewsData = empty("reviewsData", asin, site);
+          p.data.reviewsData.found = false;
+          p.data.reviewsData.summary = "评论刷新失败：" + (err.message || err);
+          renderColumn(column);
+          saveColumnState(index);
+          updateStatusText("竞品 " + COLUMN_KEYS[index] + " 评论分析刷新失败");
+          showToast(err.message || "评论分析刷新失败");
         }
       }
 
@@ -8609,6 +9467,47 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         return column;
       }
 
+      const columnReviewTokens = {};
+      async function startColumnReviewProbe(index, asin, site) {
+        const column = columns[index];
+        if (!column || !asin) return;
+        const upper = String(asin || "").trim().toUpperCase();
+        const market = normalizeMarketplaceSite(site || manager.config.general.site || "US");
+        const token = Date.now() + "-" + Math.random().toString(36).slice(2);
+        columnReviewTokens[index] = token;
+        try {
+          const res = await manager.fetchReviewsOnly(upper, market);
+          if (columnReviewTokens[index] !== token) return;
+          const currentAsin = String(column.asin || (column.product && column.product.asin) || "").trim().toUpperCase();
+          if (currentAsin && currentAsin !== upper) return;
+          const p = ensureColumnProduct(column);
+          p.asin = upper;
+          p.marketplace = market;
+          p.source = uniqueTextItems([p.source || "本地数据源", res.source || "评论数据源"]).join(" · ");
+          p.totalMessages = uniqueTextItems([].concat(p.totalMessages || [], res.totalMessages || []));
+          p.logs = [].concat(p.logs || [], res.logs || []);
+          p.data.reviewsData = res.data.reviewsData || empty("reviewsData", upper, market);
+          const manual = (loadManualEdits() || {})[upper];
+          if (manual) applyManualEditToProduct(column, manual);
+          setColumnOptimizationDirection(column);
+          renderColumn(column);
+          renderOptimizationSummary();
+          saveColumnState(index);
+          const stats = p.data.reviewsData && p.data.reviewsData.classificationStats;
+          const total = stats && (stats.total || stats.mergedUniqueTotal || stats.rawCount);
+          updateStatusText("竞品 " + COLUMN_KEYS[index] + " 评论链路完成" + (total ? "，有效评论 " + total + " 条" : ""));
+        } catch (err) {
+          if (columnReviewTokens[index] !== token) return;
+          const p = ensureColumnProduct(column);
+          p.data.reviewsData = empty("reviewsData", upper, market);
+          p.data.reviewsData.found = false;
+          p.data.reviewsData.summary = "评论数据暂未获取成功：" + (err.message || err) + "。基础信息已保留，可稍后点击「刷新分析」只刷新评论分析。";
+          manager.addLog(upper, "reviewsData", "评论独立链路失败：" + (err.message || err), "warn");
+          renderColumn(column);
+          saveColumnState(index);
+        }
+      }
+
       async function queryColumn(index) {
         const column = columns[index];
         const input = document.getElementById("col-input-" + index);
@@ -8625,14 +9524,19 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         renderColumn(column);
         updateStatusText("正在查询 " + COLUMN_KEYS[index] + " 列：" + asin);
         try {
-          const res = await manager.fetchOne(asin, manager.config.general.site || "US");
+          const site = normalizeMarketplaceSite(manager.config.general.site || "US");
+          const res = await manager.fetchOneCore(asin, site);
           column.product = Object.assign({}, res, { loading: false, done: true, error: false });
           if (manual) applyManualEditToProduct(column, manual);
+          /* 人工编辑缓存也走一遍中文化，避免之前保存过的外文结果覆盖自动翻译结果。 */
+          await localizeProductDataToChinese(column.product.data, asin, site, manager);
           await hydrateProductImage(column.product);
           setColumnOptimizationDirection(column);
           column.loading = false;
           renderColumn(column);
-          updateStatusText("竞品 " + COLUMN_KEYS[index] + " 查询完成");
+          saveColumnState(index);
+          updateStatusText("竞品 " + COLUMN_KEYS[index] + " 基础信息已完成，评论数据独立抓取中");
+          startColumnReviewProbe(index, asin, site);
         } catch (err) {
           column.product = { asin, loading: false, error: true, data: {}, source: null };
           column.loading = false;
@@ -8643,6 +9547,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
 
       function resetColumn(index) {
         const column = columns[index];
+        columnReviewTokens[index] = "reset-" + Date.now();
         const map = loadManualEdits();
         delete map[column.asin || ("col-" + index)];
         delete map["col-" + index];
@@ -8652,6 +9557,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         column.loading = false;
         const input = document.getElementById("col-input-" + index);
         if (input) input.value = column.asin;
+        clearColumnState(index);
         renderColumn(column);
         updateStatusText("已重置竞品 " + COLUMN_KEYS[index] + " 列");
       }
@@ -8707,7 +9613,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         try {
           const cached = localStorage.getItem(key);
           if (cached) return cached;
-          const res = await fetch(proxiedImageUrl(url));
+          const res = await fetchLocalApi(proxiedImageUrl(url));
           if (!res.ok) throw new Error("HTTP " + res.status);
           const blob = await res.blob();
           const dataUrl = await new Promise((resolve, reject) => {
@@ -8793,6 +9699,8 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         }
         const reviewImport = e.target.closest("[data-review-import]");
         if (reviewImport) { openReviewImport(Number(reviewImport.dataset.reviewImport)); return; }
+        const reviewRefresh = e.target.closest("[data-review-refresh]");
+        if (reviewRefresh) { refreshColumnReviewAnalysis(Number(reviewRefresh.dataset.reviewRefresh)); return; }
         const cancel = e.target.closest("[data-manual-cancel]");
         if (cancel) { renderColumn(columns[Number(cancel.dataset.manualCancel)]); return; }
         const save = e.target.closest("[data-manual-save]");
@@ -8965,7 +9873,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         try {
           const provider = new LocalProvider(manager.config.local);
           const asin = column.asin.toUpperCase();
-          const site = manager.config.general.site || "US";
+          const site = normalizeMarketplaceSite(manager.config.general.site || "US");
           const [basicInfo, specs, salesData, keepaData, reviewsData] = await Promise.all([
             provider.getProductBasicInfo(asin, site),
             provider.getProductSpecs(asin, site),
@@ -8986,10 +9894,15 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
             logs: [],
             totalMessages: ["首屏使用本地数据源快速预览；点击查询后按配置顺序调用 MCP/API 补齐缺失字段"],
           };
+          await localizeProductDataToChinese(column.product.data, asin, site, manager);
           const manual = (loadManualEdits() || {})[asin];
-          if (manual) applyManualEditToProduct(column, manual);
+          if (manual) {
+            applyManualEditToProduct(column, manual);
+            await localizeProductDataToChinese(column.product.data, asin, site, manager);
+          }
           setColumnOptimizationDirection(column);
           renderColumn(column);
+          saveColumnState(column.index);
         } catch (err) {
           renderColumn(column);
         }
@@ -9002,19 +9915,33 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         for (let i = 0; i < COL_COUNT; i++) buildColumnShell(i);
         renderOptimizationSummary();
         /* 预置 6 列本地样例：本地直接打开即可预览；手动点击查询才调用完整 MCP/API 链路 */
+        const currentSite = normalizeMarketplaceSite(manager.config.general.site || "US");
         DEFAULT_ASINS.forEach((asin, i) => {
           const column = columns[i];
+          if (restoreColumnState(i, currentSite)) return;
           if (!asin) {
             renderColumn(column);
             return;
           }
           const manual = (loadManualEdits() || {})[asin];
-          const cached = manager._getCache(CACHE_SCHEMA_VERSION + "|" + asin.toUpperCase() + "|US|" + manager.fingerprint());
+          const cached = manager._getCache(CACHE_SCHEMA_VERSION + "|" + asin.toUpperCase() + "|" + currentSite + "|" + manager.fingerprint());
           if (cached) {
             column.product = Object.assign({}, cached, { loading: false, done: true });
-            if (manual) applyManualEditToProduct(column, manual);
-            setColumnOptimizationDirection(column);
-            renderColumn(column);
+            (async () => {
+              await localizeProductDataToChinese(column.product.data, asin.toUpperCase(), currentSite, manager);
+              if (manual) {
+                applyManualEditToProduct(column, manual);
+                await localizeProductDataToChinese(column.product.data, asin.toUpperCase(), currentSite, manager);
+              }
+              setColumnOptimizationDirection(column);
+              renderColumn(column);
+              saveColumnState(i);
+            })().catch(() => {
+              if (manual) applyManualEditToProduct(column, manual);
+              setColumnOptimizationDirection(column);
+              renderColumn(column);
+              saveColumnState(i);
+            });
           } else {
             loadLocalPreviewColumn(column);
           }
@@ -9069,7 +9996,17 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         if (incoming.lingxing) mergeNonEmptyFields(cfg.lingxing, incoming.lingxing);
         if (incoming.voc) mergeNonEmptyFields(cfg.voc, incoming.voc);
         if (incoming.local) mergeNonEmptyFields(cfg.local, incoming.local);
-        cfg.sorftime.mcpServerUrl = normalizeRelativeApiPath(cfg.sorftime.mcpServerUrl || "api/mcp/sorftime") || "api/mcp/sorftime";
+        const normalizePresetMcp = (providerId, fallbackUrl) => {
+          const pair = normalizeMcpFormPair(providerId, cfg[providerId].mcpServerUrl, cfg[providerId].apiKey);
+          cfg[providerId].mcpServerUrl = pair.url || fallbackUrl || "";
+          cfg[providerId].apiKey = pair.key;
+        };
+        normalizePresetMcp("sellersprite", "");
+        normalizePresetMcp("xiyou", "api/mcp/xiyou");
+        normalizePresetMcp("sorftime", "api/mcp/sorftime");
+        normalizePresetMcp("sif", "api/mcp/sif");
+        normalizePresetMcp("lingxing", "api/mcp/lingxing");
+        normalizePresetMcp("voc", "");
         cfg.local.apiUrl = normalizeRelativeApiPath(cfg.local.apiUrl || "api/local/market-research") || "api/local/market-research";
         cfg.local.reviewUrl = normalizeRelativeApiPath(cfg.local.reviewUrl || "") || "";
         manager.config = cfg;
@@ -9115,7 +10052,8 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
       function updateSourceStatus(text) {
         const meta = manager.listProviders().find((p) => p.id === manager.activeMain);
         const base = text || (meta ? meta.name : manager.activeMain);
-        document.getElementById("sourceStatus").textContent = base + " · 本地、卖家精灵、Keepa、西柚、Sorftime、Sif、LingXing、VOC 已统一调度；未授权/未配置自动跳过，缺失字段用下一数据源补全，拿不到显示无数据；数据拉取后自动进入分析、优化和总结回流";
+        const site = normalizeMarketplaceSite(manager.config.general.site || "US");
+        document.getElementById("sourceStatus").textContent = base + " · 当前站点：" + site + " · 本地、卖家精灵、Keepa、西柚、Sorftime、Sif、LingXing、VOC 已统一调度；未授权/未配置自动跳过，缺失字段用下一数据源补全，拿不到显示无数据；数据拉取后自动进入分析、优化和总结回流";
       }
       function initSourceSelect() {
         const sel = document.getElementById("sourceSelect");
@@ -9123,35 +10061,61 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
           '<option value="' + esc(p.id) + '"' + (p.id === manager.activeMain ? " selected" : "") + ">" + esc(p.name) + "</option>"
         ).join("");
       }
+      function syncSiteSelectors(site) {
+        const value = normalizeMarketplaceSite(site || "US");
+        const header = document.getElementById("headerSiteSelect");
+        const modal = document.getElementById("siteSelect");
+        if (header) header.value = value;
+        if (modal) modal.value = value;
+        return value;
+      }
+      function setActiveSite(site, options = {}) {
+        const next = syncSiteSelectors(site);
+        manager.config.general.site = next;
+        if (options.persist !== false) saveConfig(manager.config);
+        updateSourceStatus();
+        if (options.requery !== false) {
+          columns.forEach((column, i) => {
+            const input = document.getElementById("col-input-" + i);
+            if (String((input && input.value) || column.asin || "").trim()) queryColumn(i);
+          });
+        }
+      }
       function applyConfigToForm() {
         const cfg = manager.config;
-        document.getElementById("siteSelect").value = cfg.general.site || "US";
+        syncSiteSelectors(cfg.general.site || "US");
         document.getElementById("timeoutInput").value = cfg.general.timeout;
         document.getElementById("retriesInput").value = cfg.general.retries;
         document.getElementById("concurrencyInput").value = cfg.general.concurrency;
         document.getElementById("intervalInput").value = cfg.general.requestIntervalMs;
         document.getElementById("modeSelect").value = cfg.general.mode;
         document.getElementById("providerOrderInput").value = cfg.providerOrder || "";
-        document.getElementById("mcpUrl").value = cfg.sellersprite.mcpServerUrl || "";
-        document.getElementById("mcpKey").value = cfg.sellersprite.apiKey || "";
+        const sellerMcpPair = normalizeMcpFormPair("sellersprite", cfg.sellersprite.mcpServerUrl, cfg.sellersprite.apiKey);
+        document.getElementById("mcpUrl").value = sellerMcpPair.url || "";
+        document.getElementById("mcpKey").value = sellerMcpPair.key || "";
         document.getElementById("sellerspriteApiBaseUrl").value = cfg.sellersprite.apiBaseUrl || "";
         document.getElementById("sellerspriteApiKey").value = cfg.sellersprite.apiKey2 || "";
         document.getElementById("keepaKey").value = cfg.keepa.keepaApiKey || "";
         document.getElementById("keepaDomain").value = cfg.keepa.domainId || 1;
-        document.getElementById("xiyouMcpUrl").value = cfg.xiyou.mcpServerUrl || "";
-        document.getElementById("xiyouMcpKey").value = cfg.xiyou.apiKey || "";
+        const xiyouMcpPair = normalizeMcpFormPair("xiyou", cfg.xiyou.mcpServerUrl, cfg.xiyou.apiKey);
+        document.getElementById("xiyouMcpUrl").value = xiyouMcpPair.url || "";
+        document.getElementById("xiyouMcpKey").value = xiyouMcpPair.key || "";
         document.getElementById("xiyouApiBaseUrl").value = cfg.xiyou.apiBaseUrl || "";
         document.getElementById("xiyouApiKey").value = cfg.xiyou.apiKey2 || "";
-        document.getElementById("sorftimeMcpUrl").value = cfg.sorftime.mcpServerUrl || "";
-        document.getElementById("sorftimeMcpKey").value = cfg.sorftime.apiKey || "";
+        const sorftimeMcpPair = normalizeMcpFormPair("sorftime", cfg.sorftime.mcpServerUrl, cfg.sorftime.apiKey);
+        document.getElementById("sorftimeMcpUrl").value = sorftimeMcpPair.url || "";
+        document.getElementById("sorftimeMcpKey").value = sorftimeMcpPair.key || "";
         document.getElementById("sorftimeApiBaseUrl").value = cfg.sorftime.apiBaseUrl || "";
         document.getElementById("sorftimeApiKey").value = cfg.sorftime.apiKey2 || "";
-        document.getElementById("sifMcpUrl").value = cfg.sif.mcpServerUrl || "";
-        document.getElementById("sifMcpKey").value = cfg.sif.apiKey || "";
-        document.getElementById("lingxingMcpUrl").value = cfg.lingxing.mcpServerUrl || "";
-        document.getElementById("lingxingMcpKey").value = cfg.lingxing.apiKey || "";
-        document.getElementById("vocMcpUrl").value = cfg.voc.mcpServerUrl || "";
-        document.getElementById("vocMcpKey").value = cfg.voc.apiKey || "";
+        const sifMcpPair = normalizeMcpFormPair("sif", cfg.sif.mcpServerUrl, cfg.sif.apiKey);
+        document.getElementById("sifMcpUrl").value = sifMcpPair.url || "";
+        document.getElementById("sifMcpKey").value = sifMcpPair.key || "";
+        const lingxingMcpPair = normalizeMcpFormPair("lingxing", cfg.lingxing.mcpServerUrl, cfg.lingxing.apiKey);
+        document.getElementById("lingxingMcpUrl").value = lingxingMcpPair.url || "";
+        document.getElementById("lingxingMcpKey").value = lingxingMcpPair.key || "";
+        const vocMcpPair = normalizeMcpFormPair("voc", cfg.voc.mcpServerUrl, cfg.voc.apiKey);
+        document.getElementById("vocMcpUrl").value = vocMcpPair.url || "";
+        document.getElementById("vocMcpKey").value = vocMcpPair.key || "";
         document.getElementById("vocApiBaseUrl").value = cfg.voc.apiBaseUrl || "";
         document.getElementById("vocApiKey").value = cfg.voc.apiKey2 || "";
         document.getElementById("marketResearchUrl").value = cfg.local.filePath || cfg.local.apiUrl || "";
@@ -9169,40 +10133,40 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
       function collectConfigFromForm() {
         const cfg = manager.config;
         cfg.mainProvider = manager.activeMain;
-        cfg.general.site = document.getElementById("siteSelect").value;
+        cfg.general.site = normalizeMarketplaceSite((document.getElementById("headerSiteSelect") || document.getElementById("siteSelect"))?.value || cfg.general.site || "US");
+        syncSiteSelectors(cfg.general.site);
         cfg.general.timeout = Math.max(1, Number(document.getElementById("timeoutInput").value) || 10);
         cfg.general.retries = Math.max(0, Number(document.getElementById("retriesInput").value) || 0);
         cfg.general.concurrency = Math.max(1, Math.min(6, Number(document.getElementById("concurrencyInput").value) || 3));
         cfg.general.requestIntervalMs = Math.max(0, Number(document.getElementById("intervalInput").value) || 0);
         cfg.general.mode = document.getElementById("modeSelect").value;
         cfg.providerOrder = String(document.getElementById("providerOrderInput").value || "").trim();
-        cfg.sellersprite.mcpServerUrl = document.getElementById("mcpUrl").value.trim();
-        cfg.sellersprite.apiKey = document.getElementById("mcpKey").value.trim();
+        const sellerspriteMcp = normalizeMcpFormPair("sellersprite", document.getElementById("mcpUrl").value, document.getElementById("mcpKey").value);
+        cfg.sellersprite.mcpServerUrl = sellerspriteMcp.url;
+        cfg.sellersprite.apiKey = sellerspriteMcp.key;
         cfg.sellersprite.apiBaseUrl = document.getElementById("sellerspriteApiBaseUrl").value.trim();
         cfg.sellersprite.apiKey2 = document.getElementById("sellerspriteApiKey").value.trim();
         cfg.keepa.keepaApiKey = document.getElementById("keepaKey").value.trim();
         cfg.keepa.domainId = Number(document.getElementById("keepaDomain").value) || 1;
-        cfg.xiyou.mcpServerUrl = document.getElementById("xiyouMcpUrl").value.trim();
-        cfg.xiyou.apiKey = document.getElementById("xiyouMcpKey").value.trim();
+        const xiyouMcp = normalizeMcpFormPair("xiyou", document.getElementById("xiyouMcpUrl").value, document.getElementById("xiyouMcpKey").value);
+        cfg.xiyou.mcpServerUrl = xiyouMcp.url || "api/mcp/xiyou";
+        cfg.xiyou.apiKey = xiyouMcp.key;
         cfg.xiyou.apiBaseUrl = document.getElementById("xiyouApiBaseUrl").value.trim();
         cfg.xiyou.apiKey2 = document.getElementById("xiyouApiKey").value.trim();
-        const sorftimeUrl = document.getElementById("sorftimeMcpUrl").value.trim();
-        const sorftimeKey = document.getElementById("sorftimeMcpKey").value.trim();
-        if (!sorftimeUrl || /^https:\/\/mcp\.sorftime\.com/i.test(sorftimeUrl)) {
-          cfg.sorftime.mcpServerUrl = "api/mcp/sorftime";
-          cfg.sorftime.apiKey = "";
-        } else {
-          cfg.sorftime.mcpServerUrl = normalizeRelativeApiPath(sorftimeUrl);
-          cfg.sorftime.apiKey = sorftimeKey;
-        }
+        const sorftimeMcp = normalizeMcpFormPair("sorftime", document.getElementById("sorftimeMcpUrl").value, document.getElementById("sorftimeMcpKey").value);
+        cfg.sorftime.mcpServerUrl = sorftimeMcp.url || "api/mcp/sorftime";
+        cfg.sorftime.apiKey = sorftimeMcp.key;
         cfg.sorftime.apiBaseUrl = document.getElementById("sorftimeApiBaseUrl").value.trim();
         cfg.sorftime.apiKey2 = document.getElementById("sorftimeApiKey").value.trim();
-        cfg.sif.mcpServerUrl = document.getElementById("sifMcpUrl").value.trim();
-        cfg.sif.apiKey = document.getElementById("sifMcpKey").value.trim();
-        cfg.lingxing.mcpServerUrl = document.getElementById("lingxingMcpUrl").value.trim();
-        cfg.lingxing.apiKey = document.getElementById("lingxingMcpKey").value.trim();
-        cfg.voc.mcpServerUrl = document.getElementById("vocMcpUrl").value.trim();
-        cfg.voc.apiKey = document.getElementById("vocMcpKey").value.trim();
+        const sifMcp = normalizeMcpFormPair("sif", document.getElementById("sifMcpUrl").value, document.getElementById("sifMcpKey").value);
+        cfg.sif.mcpServerUrl = sifMcp.url || "api/mcp/sif";
+        cfg.sif.apiKey = sifMcp.key;
+        const lingxingMcp = normalizeMcpFormPair("lingxing", document.getElementById("lingxingMcpUrl").value, document.getElementById("lingxingMcpKey").value);
+        cfg.lingxing.mcpServerUrl = lingxingMcp.url || "api/mcp/lingxing";
+        cfg.lingxing.apiKey = lingxingMcp.key;
+        const vocMcp = normalizeMcpFormPair("voc", document.getElementById("vocMcpUrl").value, document.getElementById("vocMcpKey").value);
+        cfg.voc.mcpServerUrl = vocMcp.url;
+        cfg.voc.apiKey = vocMcp.key;
         cfg.voc.apiBaseUrl = document.getElementById("vocApiBaseUrl").value.trim();
         cfg.voc.apiKey2 = document.getElementById("vocApiKey").value.trim();
         const marketValue = document.getElementById("marketResearchUrl").value.trim();
@@ -9233,13 +10197,13 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         setLight("mcp", sellerMcp || sellerApi ? (sellerMcp ? "未测试（MCP 已配置）" : "未测试（API 已配置）") : "未配置");
         setLight("keepa", cfg.keepa.keepaApiKey ? "未测试" : "未配置");
         const xiyouProxy = isLocalProxyUrl(cfg.xiyou.mcpServerUrl);
-        setLight("xiyouMcp", xiyouProxy ? "已配置（本机代理注入密钥）" : (cfg.xiyou.apiKey && cfg.xiyou.mcpServerUrl ? "已配置（MCP）" : (cfg.xiyou.apiKey2 && cfg.xiyou.apiBaseUrl ? "已配置（API）" : "未配置")), xiyouProxy ? "green" : (cfg.xiyou.apiKey && cfg.xiyou.mcpServerUrl ? "green" : (cfg.xiyou.apiKey2 && cfg.xiyou.apiBaseUrl ? "green" : "gray")));
+        setLight("xiyouMcp", xiyouProxy ? (cfg.xiyou.apiKey ? "已配置（本机代理 + 页面Key）" : "已配置（本机代理/环境Key）") : (cfg.xiyou.apiKey && cfg.xiyou.mcpServerUrl ? "已配置（MCP）" : (cfg.xiyou.apiKey2 && cfg.xiyou.apiBaseUrl ? "已配置（API）" : "未配置")), xiyouProxy ? "green" : (cfg.xiyou.apiKey && cfg.xiyou.mcpServerUrl ? "green" : (cfg.xiyou.apiKey2 && cfg.xiyou.apiBaseUrl ? "green" : "gray")));
         const sorftimeProxy = isLocalProxyUrl(cfg.sorftime.mcpServerUrl);
-        setLight("sorftimeMcp", sorftimeProxy ? "已配置（本机代理）" : (cfg.sorftime.apiKey && cfg.sorftime.mcpServerUrl ? "未测试（MCP）" : (cfg.sorftime.apiKey2 && cfg.sorftime.apiBaseUrl ? "未测试（API）" : "未配置")), sorftimeProxy ? "green" : "gray");
+        setLight("sorftimeMcp", sorftimeProxy ? (cfg.sorftime.apiKey ? "已配置（本机代理 + 页面Key）" : "已配置（本机代理/环境Key）") : (cfg.sorftime.apiKey && cfg.sorftime.mcpServerUrl ? "未测试（MCP）" : (cfg.sorftime.apiKey2 && cfg.sorftime.apiBaseUrl ? "未测试（API）" : "未配置")), sorftimeProxy ? "green" : "gray");
         const sifProxy = isLocalProxyUrl(cfg.sif.mcpServerUrl);
-        setLight("sifMcp", sifProxy ? "已配置（本机代理注入密钥）" : (cfg.sif.apiKey && cfg.sif.mcpServerUrl ? "已配置（MCP）" : "未配置"), sifProxy ? "green" : (cfg.sif.apiKey && cfg.sif.mcpServerUrl ? "green" : "gray"));
+        setLight("sifMcp", sifProxy ? (cfg.sif.apiKey ? "已配置（本机代理 + 页面Key）" : "已配置（本机代理/环境Key）") : (cfg.sif.apiKey && cfg.sif.mcpServerUrl ? "已配置（MCP）" : "未配置"), sifProxy ? "green" : (cfg.sif.apiKey && cfg.sif.mcpServerUrl ? "green" : "gray"));
         const lingxingProxy = isLocalProxyUrl(cfg.lingxing.mcpServerUrl);
-        setLight("lingxingMcp", lingxingProxy ? "已配置（本机代理注入密钥）" : (cfg.lingxing.apiKey && cfg.lingxing.mcpServerUrl ? "已配置（MCP）" : "未配置"), lingxingProxy ? "green" : (cfg.lingxing.apiKey && cfg.lingxing.mcpServerUrl ? "green" : "gray"));
+        setLight("lingxingMcp", lingxingProxy ? (cfg.lingxing.apiKey ? "已配置（本机代理 + 页面Key）" : "已配置（本机代理/环境Key）") : (cfg.lingxing.apiKey && cfg.lingxing.mcpServerUrl ? "已配置（MCP）" : "未配置"), lingxingProxy ? "green" : (cfg.lingxing.apiKey && cfg.lingxing.mcpServerUrl ? "green" : "gray"));
         setLight("voc", cfg.voc.apiKey && cfg.voc.mcpServerUrl ? "未测试（MCP）" : (cfg.voc.apiKey2 && cfg.voc.apiBaseUrl ? "未测试（API）" : "未配置"));
         setLight("local", "已配置（内置市场调研 + 评论样本）", "green");
         const ar = cfg.amazonReviews || {};
@@ -9256,6 +10220,20 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         light.className = "light " + (color || "gray");
         span.textContent = text;
       }
+      function attachMcpInputNormalizer(providerId, urlId, keyId) {
+        const urlEl = document.getElementById(urlId);
+        const keyEl = document.getElementById(keyId);
+        if (!urlEl || !keyEl) return;
+        const normalize = () => {
+          const before = urlEl.value;
+          const pair = normalizeMcpFormPair(providerId, urlEl.value, keyEl.value);
+          if (pair.url !== before) urlEl.value = pair.url || "";
+          if (pair.key && !keyEl.value) keyEl.value = pair.key;
+        };
+        urlEl.addEventListener("blur", normalize);
+        urlEl.addEventListener("change", normalize);
+        urlEl.addEventListener("paste", () => setTimeout(normalize, 0));
+      }
       function openConfig() {
         applyConfigToForm();
         document.getElementById("configModal").hidden = false;
@@ -9267,6 +10245,12 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         document.getElementById("shareConfigBtn").addEventListener("click", copyShareLink);
         document.getElementById("configClose").addEventListener("click", closeConfig);
         document.getElementById("configCancel").addEventListener("click", closeConfig);
+        attachMcpInputNormalizer("sellersprite", "mcpUrl", "mcpKey");
+        attachMcpInputNormalizer("xiyou", "xiyouMcpUrl", "xiyouMcpKey");
+        attachMcpInputNormalizer("sorftime", "sorftimeMcpUrl", "sorftimeMcpKey");
+        attachMcpInputNormalizer("sif", "sifMcpUrl", "sifMcpKey");
+        attachMcpInputNormalizer("lingxing", "lingxingMcpUrl", "lingxingMcpKey");
+        attachMcpInputNormalizer("voc", "vocMcpUrl", "vocMcpKey");
         const sharePresetOpenBtn = document.getElementById("sharePresetOpenBtn");
         const sharePresetHideBtn = document.getElementById("sharePresetHideBtn");
         if (sharePresetOpenBtn) sharePresetOpenBtn.addEventListener("click", openConfig);
@@ -9346,7 +10330,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
           saveConfig(manager.config);
           try {
             const site = manager.config.general.site || "US";
-            const res = await fetch("api/reviews/status?asin=B0CQX8B5K9&site=" + encodeURIComponent(site), { signal: AbortSignal.timeout(20000) });
+            const res = await fetchLocalApi("api/reviews/status?asin=B0CQX8B5K9&site=" + encodeURIComponent(site), { signal: AbortSignal.timeout(20000) });
             const data = await res.json();
             if (!res.ok || data.ok === false) throw new Error((data && data.error) || ("HTTP " + res.status));
             setLight(
@@ -9389,24 +10373,31 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
           if (String((input && input.value) || column.asin || "").trim()) queryColumn(i);
         });
       });
+      const handleSiteChange = (e) => {
+        setActiveSite(e.target.value, { persist: true, requery: true });
+      };
+      const headerSiteSelect = document.getElementById("headerSiteSelect");
+      if (headerSiteSelect) headerSiteSelect.addEventListener("change", handleSiteChange);
+      const modalSiteSelect = document.getElementById("siteSelect");
+      if (modalSiteSelect) modalSiteSelect.addEventListener("change", handleSiteChange);
       document.getElementById("configModal").addEventListener("click", (e) => {
         if (e.target.id === "configModal") closeConfig();
       });
 
       /* MCP 兼容入口：外部注入单条竞品数据后渲染对应列 */
-      window.mcpImport = (payload) => {
+      window.mcpImport = async (payload) => {
         if (!payload) return;
         const items = Array.isArray(payload) ? payload : (payload.raw || payload.products || []);
-        items.forEach((item) => {
+        for (const item of items) {
           const asin = String(item.asin || item.ASIN || "").toUpperCase();
           const col = columns.find((c) => c.asin.toUpperCase() === asin);
-          if (!col) return;
+          if (!col) continue;
           const incoming = { asin, matched: true, done: true, loading: false, source: "MCP", data: {} };
           const existing = col.product && col.product.data ? col.product : null;
           const product = Object.assign({}, existing || {}, incoming, { data: {} });
           product.data.basicInfo = {
             brand: item["品牌"] || item.brand || "", title: item["标题"] || item.title || "",
-            url: item["链接"] || item.url || ("https://www.amazon.com/dp/" + asin),
+            url: item["链接"] || item.url || amazonProductUrl(asin, normalizeMarketplaceSite(manager.config.general.site || "US")),
             price: item["售价"] || item.price || null, imageUrl: item["图片"] || item.imageUrl || "",
             category: null, subcategory: null, rating: item["评分"] || null, reviewCount: item["评论数"] || null,
           };
@@ -9453,9 +10444,11 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
             product.totalMessages = uniqueTextItems([].concat(existing.totalMessages || [], incoming.totalMessages || []));
           }
           col.product = product;
+          await localizeProductDataToChinese(col.product.data, asin, normalizeMarketplaceSite(manager.config.general.site || "US"), manager);
           setColumnOptimizationDirection(col);
           renderColumn(col);
-        });
+          saveColumnState(col.index);
+        }
       };
       window.mcpCompetitorAdapter = {
         setRawData: (list) => window.mcpImport(list),
@@ -9468,6 +10461,7 @@ const CACHE_SCHEMA_VERSION = "v15-crawl-progress-bar";
         const preset = parseSharedConfigInput(location.href);
         if (preset) applySharedConfigPreset(preset, { persist: true, silent: true });
         initSourceSelect();
+        applyConfigToForm();
         initConfigModal();
         renderProviderLogs();
         initColumns();
