@@ -1,0 +1,17 @@
+.env
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+data/*.json
+!data/.gitkeep
+accounts/*.json
+!accounts/pool.example.json
+accounts/storage/
+accounts/profiles/
+logs/
+tasks/*.json
+!tasks/.gitkeep
+*.storage.json
+.DS_Store

@@ -972,9 +972,22 @@ function runReviewsApi(argv, opts) {
   throw new Error(lastError || "无法调用 amazon-reviews-skill 桥接脚本");
 }
 
+function resolveAmazonReviewsSkillRoot() {
+  const candidates = [
+    path.resolve(scanRoot, "amazon-reviews-skill"),
+    path.resolve(scanRoot, "..", "amazon-reviews-skill"),
+    path.resolve(root, "..", "amazon-reviews-skill"),
+    path.resolve(root, "..", "..", "amazon-reviews-skill"),
+  ];
+  for (const dir of candidates) {
+    if (fs.existsSync(path.join(dir, "amazon_reviews", "api.py"))) return dir;
+  }
+  return candidates[0];
+}
+
 function spawnReviewsWorker(taskId) {
   const script = reviewsApiScript();
-  const skillRoot = path.resolve(scanRoot, "..", "amazon-reviews-skill");
+  const skillRoot = resolveAmazonReviewsSkillRoot();
   const logDir = path.join(scanRoot, "logs");
   try { fs.mkdirSync(logDir, { recursive: true }); } catch (err) { /* ignore */ }
   const logFile = path.join(logDir, "reviews-worker-" + (taskId || "next") + ".log");
@@ -1006,9 +1019,9 @@ function spawnReviewsWorker(taskId) {
       });
       /* 不要 closeSync(outFd)：detached 子进程仍要用这个 fd 写日志 */
       child.unref();
-      return { pid: child.pid, exe, logFile };
+      return { pid: child.pid, exe, logFile, skillRoot };
     } catch (err) {
-      started = { error: err.message, exe, logFile };
+      started = { error: err.message, exe, logFile, skillRoot };
     }
   }
   return started;
