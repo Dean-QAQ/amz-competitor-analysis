@@ -162,6 +162,19 @@ const SIF_MCP_KEY = process.env.SIF_MCP_KEY || "";
 const LINGXING_MCP_URL = "https://openmcp.lingxing.com/mcp-servers/lingxing-mcp";
 let LINGXING_MCP_KEY = process.env.LINGXING_MCP_KEY || "";
 
+/* 外部 MCP 配置只读取 xydc 授权；凭证仍留在本地文件，不写入响应或日志。 */
+const EXTERNAL_MCP_CONFIG_PATH = process.env.MCP_CONFIG_PATH
+  || path.resolve(root, "..", "sorftime-dashboard(1)", "mcp配置(1).json");
+let XIYOU_CONFIG_KEY = "";
+try {
+  const externalConfig = JSON.parse(fs.readFileSync(EXTERNAL_MCP_CONFIG_PATH, "utf8").replace(/^\uFEFF/, ""));
+  const rawAuthorization = externalConfig?.mcpServers?.["xydc-mcp"]?.headers?.Authorization || "";
+  const authorizationMatch = String(rawAuthorization).match(/^Bearer\s+(.+)$/i);
+  XIYOU_CONFIG_KEY = (authorizationMatch ? authorizationMatch[1] : rawAuthorization).trim();
+} catch (err) {
+  console.warn("[MCP] 外部配置未加载，继续使用 .env.local：" + (err.code || "读取失败"));
+}
+
 function readSorftimeUrl() {
   /* 优先读 config.toml；找不到时回退到内置官方地址（Key 由 SORFTIME_MCP_AUTH 环境变量提供） */
   try {
@@ -213,16 +226,20 @@ async function proxyXiyouMcp(req, res) {
     const body = await readBody(req);
     const key = clientMcpKey(req, "x-xiyou-key") || XIYOU_MCP_KEY;
     const targetUrl = XIYOU_MCP_URL;
-    const headers = {
-      "Content-Type": req.headers["content-type"] || "application/json",
-      "Accept": req.headers.accept || "application/json, text/event-stream",
+    const requestMcp = async (authorizationKey) => {
+      const headers = {
+        "Content-Type": req.headers["content-type"] || "application/json",
+        "Accept": req.headers.accept || "application/json, text/event-stream",
+      };
+      if (authorizationKey) headers.Authorization = "Bearer " + authorizationKey;
+      return fetch(targetUrl, { method: "POST", headers, body });
     };
-    if (key) headers.Authorization = "Bearer " + key;
-    const upstream = await fetch(targetUrl, {
-      method: "POST",
-      headers,
-      body,
-    });
+    let upstream = await requestMcp(key);
+    /* 页面缓存里的旧 Key 鉴权失败时，透明切换到外部配置中的服务端授权。 */
+    if ((upstream.status === 401 || upstream.status === 403) && XIYOU_CONFIG_KEY && XIYOU_CONFIG_KEY !== key) {
+      await upstream.arrayBuffer().catch(() => null);
+      upstream = await requestMcp(XIYOU_CONFIG_KEY);
+    }
     const text = await upstream.text();
     res.writeHead(upstream.status, {
       "Content-Type": upstream.headers.get("content-type") || "application/json; charset=utf-8",
