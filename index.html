@@ -43,8 +43,27 @@
         box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
       }
       .top-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+      .top-title-line,
+      .summary-title-line {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
       .top-head h1 { font-size: 22px; font-weight: 700; letter-spacing: 0; }
       .top-head .sub { font-size: 12px; color: var(--muted); margin-top: 6px; }
+      .collapse-toggle {
+        height: 28px;
+        padding: 0 10px;
+        border: 1px solid #bfdbfe;
+        border-radius: 6px;
+        background: #eff6ff;
+        color: #2563eb;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      .collapse-toggle:hover { background: #dbeafe; border-color: #93c5fd; }
+      .collapsible-region[hidden] { display: none !important; }
       .top-tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
       .source-picker { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #4b5563; }
       .source-picker select {
@@ -1367,7 +1386,8 @@
       }
       .competitor-card .ai-head .btn-import:hover { background: #fff7f7; }
       .competitor-card .ai-head .btn-review-refresh:hover { background: #eff6ff; }
-      .review-import-modal textarea {
+      .review-import-modal textarea,
+      .summary-import-modal textarea {
         width: 100%;
         min-height: 260px;
         resize: vertical;
@@ -1379,7 +1399,8 @@
         font-family: inherit;
         transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
       }
-      .review-import-modal textarea:focus {
+      .review-import-modal textarea:focus,
+      .summary-import-modal textarea:focus {
         outline: none;
         border-color: #2563eb;
         box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.14);
@@ -1534,8 +1555,18 @@
       /* V4 优化总结：用占比条和依据列展示，更接近分析看板 */
       .summary-dashboard {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 12px;
+      }
+      .summary-sample-note {
+        margin-bottom: 12px;
+        padding: 9px 12px;
+        border: 1px solid #fed7aa;
+        border-radius: 8px;
+        background: #fff7ed;
+        color: #9a3412;
+        font-size: 12px;
+        line-height: 1.6;
       }
       .summary-overview-strip {
         display: flex;
@@ -1642,7 +1673,10 @@
       .summary-metric-row {
         padding: 9px 12px;
         border-bottom: 1px solid #eef2f7;
+        cursor: pointer;
+        transition: background .15s ease, box-shadow .15s ease;
       }
+      .summary-metric-row:hover { background: #f8fafc; }
       .summary-metric-row:last-child { border-bottom: 0; }
       .summary-metric-desc {
         min-width: 0;
@@ -1695,6 +1729,21 @@
         word-break: break-word;
       }
       .summary-reason .empty { color: #a3aebc; }
+      .summary-asin-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+      }
+      .summary-asin-chip {
+        border: 1px solid #dbeafe;
+        border-radius: 999px;
+        background: #eff6ff;
+        color: #1d4ed8;
+        padding: 2px 7px;
+        font-family: Consolas, "Courier New", monospace;
+        font-size: 11px;
+        line-height: 1.4;
+      }
       .summary-empty-state {
         padding: 16px 12px;
         color: #a3aebc;
@@ -1738,6 +1787,91 @@
         flex-wrap: wrap;
         justify-content: flex-end;
       }
+      .development-report .summary-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+      .development-report-list { margin-top: 16px; }
+      .development-report-note {
+        margin-bottom: 12px;
+        padding: 10px 12px;
+        border: 1px solid #dbe7f5;
+        border-radius: 8px;
+        background: #f8fafc;
+        color: #334155;
+        font-size: 12px;
+        line-height: 1.7;
+      }
+      .development-report-note.warn {
+        border-color: #fed7aa;
+        background: #fff7ed;
+        color: #9a3412;
+      }
+      .development-report-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+      }
+      .development-report-card {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        overflow: hidden;
+      }
+      .development-report-card h3 {
+        margin: 0;
+        padding: 11px 12px;
+        border-bottom: 1px solid var(--line);
+        background: #f8fafc;
+        color: #0f172a;
+        font-size: 14px;
+      }
+      .development-report-items {
+        display: grid;
+        gap: 0;
+      }
+      .development-report-item {
+        padding: 10px 12px;
+        border-bottom: 1px solid #eef2f7;
+        font-size: 12px;
+        line-height: 1.65;
+      }
+      .development-report-item:last-child { border-bottom: 0; }
+      .development-report-item strong {
+        display: block;
+        margin-bottom: 5px;
+        color: #111827;
+      }
+      .development-report-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin: 6px 0;
+      }
+      .development-report-badge {
+        border-radius: 999px;
+        padding: 2px 7px;
+        background: #eef2ff;
+        color: #3730a3;
+        font-size: 11px;
+      }
+      .development-report-source {
+        color: #64748b;
+        word-break: break-word;
+      }
+      @media (max-width: 1180px) {
+        .development-report-grid { grid-template-columns: 1fr; }
+      }
+      .competitor-col.summary-focus {
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.22);
+        border-color: #93c5fd;
+      }
+      @media (max-width: 1180px) {
+        .summary-dashboard { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      }
       @media (max-width: 900px) {
         .summary-dashboard { grid-template-columns: 1fr; }
         .summary-metric-head,
@@ -1751,7 +1885,10 @@
     <header class="page top-card">
       <div class="top-head">
         <div>
-          <h1>竞品分析</h1>
+          <div class="top-title-line">
+            <h1>竞品分析</h1>
+            <button class="collapse-toggle" id="topPanelToggle" type="button" aria-expanded="true" aria-controls="topPanelBody">收起</button>
+          </div>
           <p class="sub">6个独立竞品列，支持单列查询、重置，并预留 MCP / API 接入</p>
         </div>
         <div class="top-tools">
@@ -1774,38 +1911,40 @@
           <button class="icon-btn" id="configBtn" type="button">数据源配置</button>
         </div>
       </div>
-      <div class="status-line">
-        <span><span class="dot"></span><span id="statusAsins">6个竞品列，当前支持输入单个 ASIN</span></span>
-        <span id="sourceStatus" class="source">评论来源：人工导入 → MCP/API → 本地抓取；卖点仅取 MCP/官方详情，缺数据统一显示无数据</span>
-      </div>
-      <div class="share-preset-banner" id="sharePresetBanner" hidden>
-        <div>
-          <strong>已加载共享配置</strong>
-          <span>这份链接不包含任何 Key。请在右上角打开“数据源配置”，补填你自己的 MCP/API 地址和密钥后再查询。</span>
+      <div class="collapsible-region" id="topPanelBody">
+        <div class="status-line">
+          <span><span class="dot"></span><span id="statusAsins">6个竞品列，当前支持输入单个 ASIN</span></span>
+          <span id="sourceStatus" class="source">评论来源：人工导入 → MCP/API → 本地抓取；卖点仅取 MCP/官方详情，缺数据统一显示无数据</span>
         </div>
-        <div class="share-preset-actions">
-          <button class="btn btn-secondary btn-small" id="sharePresetOpenBtn" type="button">打开配置</button>
-          <button class="btn btn-ghost btn-small" id="sharePresetHideBtn" type="button">先隐藏</button>
-        </div>
-      </div>
-      <!-- 数据源调度日志区：只渲染一次，记录按优先级切换数据源、合并与失败信息 -->
-      <div class="data-source-log" id="dataSourceLog">
-        <div class="log-head">
-          <span>数据源调度日志</span>
-          <button type="button" id="clearLogBtn">清空</button>
-        </div>
-        <div class="log-columns" id="dataSourceLogColumns"></div>
-      </div>
-      <!-- 旧全局面板保留为隐藏状态；实际进度在每列头部下方独立显示 -->
-      <div class="amz-crawl-progress" id="amzCrawlProgressPanel" hidden>
-        <div class="amz-crawl-head">
+        <div class="share-preset-banner" id="sharePresetBanner" hidden>
           <div>
-            <div class="amz-crawl-title">全量评论抓取进度</div>
-            <div class="amz-crawl-hint">后台 Chrome 抓取中；条数来自 Skill 实时 checkpoint，完成后点击对应竞品列「刷新分析」即可，不需要重新查询基础信息。</div>
+            <strong>已加载共享配置</strong>
+            <span>这份链接不包含任何 Key。请在右上角打开“数据源配置”，补填你自己的 MCP/API 地址和密钥后再查询。</span>
           </div>
-          <button class="btn btn-ghost btn-small" id="amzCrawlProgressHideBtn" type="button">隐藏</button>
+          <div class="share-preset-actions">
+            <button class="btn btn-secondary btn-small" id="sharePresetOpenBtn" type="button">打开配置</button>
+            <button class="btn btn-ghost btn-small" id="sharePresetHideBtn" type="button">先隐藏</button>
+          </div>
         </div>
-        <div id="amzCrawlProgressList"></div>
+        <!-- 数据源调度日志区：只渲染一次，记录按优先级切换数据源、合并与失败信息 -->
+        <div class="data-source-log" id="dataSourceLog">
+          <div class="log-head">
+            <span>数据源调度日志</span>
+            <button type="button" id="clearLogBtn">清空</button>
+          </div>
+          <div class="log-columns" id="dataSourceLogColumns"></div>
+        </div>
+        <!-- 旧全局面板保留为隐藏状态；实际进度在每列头部下方独立显示 -->
+        <div class="amz-crawl-progress" id="amzCrawlProgressPanel" hidden>
+          <div class="amz-crawl-head">
+            <div>
+              <div class="amz-crawl-title">全量评论抓取进度</div>
+              <div class="amz-crawl-hint">后台 Chrome 抓取中；条数来自 Skill 实时 checkpoint，完成后点击对应竞品列「刷新分析」即可，不需要重新查询基础信息。</div>
+            </div>
+            <button class="btn btn-ghost btn-small" id="amzCrawlProgressHideBtn" type="button">隐藏</button>
+          </div>
+          <div id="amzCrawlProgressList"></div>
+        </div>
       </div>
     </header>
 
@@ -1815,16 +1954,80 @@
     <section class="page columns-page top-card optimization-summary" id="optimizationSummaryCard">
       <div class="summary-head">
         <div>
-          <h2>优化方向总结</h2>
+          <div class="summary-title-line">
+            <h2>汇总视图</h2>
+            <button class="collapse-toggle" id="summaryPanelToggle" type="button" aria-expanded="true" aria-controls="optimizationSummaryList">收起</button>
+          </div>
           <p>统一汇总 6 个竞品的优化方向，集中放在页面底部展示。</p>
         </div>
         <div class="summary-actions">
           <div class="summary-note" id="summarySourceNote">来自各列“优化方向”字段</div>
-          <button class="btn btn-secondary btn-small" id="summaryEditBtn" type="button">编辑总结</button>
+          <button class="btn btn-secondary btn-small" id="summaryImportBtn" type="button">人工导入</button>
+          <button class="btn btn-secondary btn-small" id="summaryRefreshBtn" type="button">刷新汇总</button>
         </div>
       </div>
       <div class="optimization-summary-list" id="optimizationSummaryList"></div>
     </section>
+
+    <section class="page columns-page top-card development-report" id="productDevelopmentReportCard">
+      <div class="summary-head">
+        <div>
+          <div class="summary-title-line">
+            <h2>优化方向</h2>
+            <button class="collapse-toggle" id="developmentReportToggle" type="button" aria-expanded="true" aria-controls="productDevelopmentReportBody">收起</button>
+          </div>
+          <p>基于汇总视图生成产品开发报告，输出开发方向、功能参数清单和差异化建议。</p>
+        </div>
+        <div class="summary-actions">
+          <div class="summary-note" id="developmentReportNote">等待汇总视图输出</div>
+          <button class="btn btn-secondary btn-small" id="developmentReportImportBtn" type="button">人工导入文本</button>
+          <button class="btn btn-secondary btn-small" id="developmentReportRefreshBtn" type="button">刷新报告</button>
+        </div>
+      </div>
+      <div class="development-report-list collapsible-region" id="productDevelopmentReportBody"></div>
+    </section>
+
+    <div class="modal-mask" id="developmentReportImportModal" hidden>
+      <div class="modal summary-import-modal" role="dialog" aria-modal="true" aria-label="导入优化方向文本">
+        <div class="modal-head">
+          <h2>人工导入优化方向文本</h2>
+          <button class="modal-close" id="developmentReportImportClose" type="button" aria-label="关闭">×</button>
+        </div>
+        <div class="tab-body">
+          <div class="review-import-help">
+            仅用于第三层【优化方向】产品开发报告，可独立生成，不要求第一层和第二层已有数据。可按“开发方向 / 功能参数清单 / 差异化建议”分段粘贴，也可以直接粘贴普通要点文本。
+          </div>
+          <textarea id="developmentReportImportText" placeholder="示例：&#10;开发方向：定位为家用便携训练套装，重点规避配件易断和说明不清。&#10;功能参数清单：加厚承重结构；阻力带耐拉伸测试；防滑脚垫。&#10;差异化建议：增加视频教程二维码；配件模块化收纳；把刚需改进项写入规格书。"></textarea>
+          <div class="review-import-meta" id="developmentReportImportMeta">保存后将直接生成第三层产品开发报告。</div>
+        </div>
+        <div class="modal-foot">
+          <button class="btn btn-secondary" id="developmentReportImportClear" type="button">清空导入</button>
+          <button class="btn btn-secondary" id="developmentReportImportCancel" type="button">取消</button>
+          <button class="btn btn-primary" id="developmentReportImportApply" type="button">保存并生成</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-mask" id="summaryImportModal" hidden>
+      <div class="modal summary-import-modal" role="dialog" aria-modal="true" aria-label="导入汇总字段">
+        <div class="modal-head">
+          <h2>人工导入汇总字段</h2>
+          <button class="modal-close" id="summaryImportClose" type="button" aria-label="关闭">×</button>
+        </div>
+        <div class="tab-body">
+          <div class="review-import-help">
+            仅参与底部【优化方向总结】聚合，不覆盖上方竞品卡片。可粘贴 ASIN、产品卖点、好评点、差评点、待改善点、使用人群、使用场景、优化方向；未填写的字段不会参与统计。
+          </div>
+          <textarea id="summaryImportText" placeholder="示例：&#10;ASIN: B0XXXXXXX&#10;产品卖点：官方卖点 1&#10;好评点：用户提到的真实好评&#10;差评点：用户提到的真实差评&#10;待改善点：基于差评转化的改善方向&#10;使用人群：评论原文支持的人群&#10;使用场景：评论原文支持的场景&#10;优化方向：基于上述字段的方向"></textarea>
+          <div class="review-import-meta" id="summaryImportMeta">导入后将与上方 6 列已解析字段一起聚合。</div>
+        </div>
+        <div class="modal-foot">
+          <button class="btn btn-secondary" id="summaryImportClear" type="button">清空导入</button>
+          <button class="btn btn-secondary" id="summaryImportCancel" type="button">取消</button>
+          <button class="btn btn-primary" id="summaryImportApply" type="button">保存并刷新</button>
+        </div>
+      </div>
+    </div>
 
     <!-- AI评论导入弹窗：仅写入当前竞品列，不影响其他列 -->
     <div class="modal-mask" id="reviewImportModal" hidden>
@@ -3717,6 +3920,55 @@ function reviewMainSourceLabel(sourceId) {
       function isLocalProxyUrl(url) {
         return /^(?:\.\/)?\/?api\//i.test(String(url || "").trim());
       }
+      function parseMcpResponseEvents(text) {
+        const events = [];
+        const raw = String(text || "");
+        const trimmed = raw.trim();
+        if (trimmed.startsWith("{")) {
+          try { events.push(JSON.parse(trimmed)); } catch (err) {}
+        }
+        if (!events.length) {
+          let dataLines = [];
+          const flush = () => {
+            if (!dataLines.length) return;
+            try { events.push(JSON.parse(dataLines.join("\n"))); } catch (err) {}
+            dataLines = [];
+          };
+          for (const line of raw.split(/\r?\n/)) {
+            if (line === "") { flush(); continue; }
+            if (line.startsWith("data:")) dataLines.push(line.slice(5).replace(/^\s/, ""));
+          }
+          flush();
+        }
+        return events;
+      }
+      async function fetchMcpToolList(url, key, providerId, label) {
+        const endpoint = String(url || "").trim().replace(/\/+$/, "");
+        if (!endpoint) throw new ProviderRequestError((label || "MCP") + "未配置服务器地址");
+        const headers = { "Content-Type": "application/json", "Accept": "application/json, text/event-stream" };
+        const token = normalizeMcpToken(key || "");
+        if (token) {
+          if (providerId === "sif") {
+            headers["secret-key"] = token;
+            if (isLocalProxyUrl(endpoint)) headers["x-sif-key"] = token;
+          } else if (isLocalProxyUrl(endpoint)) {
+            headers["x-" + providerId + "-key"] = token;
+          } else {
+            headers.Authorization = "Bearer " + token;
+          }
+        }
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ jsonrpc: "2.0", id: Date.now() + Math.floor(Math.random() * 1000), method: "tools/list", params: {} }),
+        });
+        if (!res.ok) throw new ProviderRequestError((label || "MCP") + " MCP HTTP " + res.status);
+        const response = parseMcpResponseEvents(await res.text()).find((event) => event && event.result !== undefined);
+        if (!response) throw new ProviderRequestError((label || "MCP") + " MCP 未返回工具列表");
+        if (response.error) throw new ProviderRequestError((label || "MCP") + " MCP 错误：" + (response.error.message || JSON.stringify(response.error)));
+        const tools = Array.isArray(response.result && response.result.tools) ? response.result.tools : [];
+        return { tools, raw: response.result };
+      }
       function normalizeLaunchFields(raw) {
         const launchSource = asText(raw?.launchDate ?? raw?.launch_date ?? raw?.onlineDate ?? raw?.online_date ?? raw?.availableDate ?? raw?.dateFirstAvailable ?? raw?.first_available_day ?? raw?.first_available_date ?? raw?.firstAvailableDate ?? raw?.firstAvailable ?? raw?.listedDate ?? raw?.["上线时间"] ?? raw?.["上架时间"] ?? raw?.releaseDate);
         let launchDate = launchSource;
@@ -4190,6 +4442,18 @@ function reviewMainSourceLabel(sourceId) {
           async testConnection() {
             if (!this.isConfigured()) return { ok: false, status: "unconfigured", message: meta.label + "未配置" };
             try {
+              const cfg = this.config || {};
+              const mcpUrl = String(cfg.mcpServerUrl || "").trim();
+              if (mcpUrl && (normalizeMcpToken(cfg.apiKey || "") || hasInlineAuth(mcpUrl) || isLocalProxyUrl(mcpUrl))) {
+                const url = mcpEndpoint(mcpUrl, meta.path || "/mcp");
+                const list = await fetchMcpToolList(url, cfg.apiKey, meta.id, meta.label);
+                return {
+                  ok: true,
+                  status: "connected",
+                  message: meta.label + " MCP 已连接，工具数：" + list.tools.length,
+                  data: list.raw,
+                };
+              }
               const raw = await this._request(meta.methods.test, { asin: meta.testAsin || "B0B441L1K6", marketplace: "US", ping: true });
               return { ok: true, status: "connected", message: meta.label + " 连接成功", data: raw };
             } catch (err) {
@@ -4425,6 +4689,11 @@ function reviewMainSourceLabel(sourceId) {
         async testConnection() {
           if (!this.isConfigured()) return { ok: false, status: "unconfigured", message: "西柚未配置" };
           try {
+            const cfg = this.config || {};
+            const list = await fetchMcpToolList(this._mcpUrl(), cfg.apiKey, "xiyou", "西柚");
+            if (list.tools.length) {
+              return { ok: true, status: "connected", message: "西柚 MCP 已连接，工具数：" + list.tools.length, data: list.raw };
+            }
             const raw = await this.getProductBasicInfo("B0CFJJFLFY", "US");
             return { ok: raw.found, status: raw.found ? "connected" : "failed", message: raw.found ? "西柚连接成功" : "西柚未返回商品详情" };
           } catch (err) {
@@ -4880,11 +5149,16 @@ function reviewMainSourceLabel(sourceId) {
         async testConnection() {
           if (!this.isConfigured()) return { ok: false, status: "unconfigured", message: "Sif 未配置" };
           try {
-            const list = await this._call("ping", {});
+            const cfg = this.config || {};
+            const list = await fetchMcpToolList(this._mcpUrl(), cfg.apiKey, "sif", "Sif");
+            if (list.tools.length) {
+              return { ok: true, status: "connected", message: "Sif MCP 已连接，工具数：" + list.tools.length, data: list.raw };
+            }
+            const ping = await this._call("ping", {});
             const profile = await this._call("market_get_asin_profile", { asins: ["B0CFJJFLFY"], site: "US" });
             const row = this._profileRow(profile, "B0CFJJFLFY");
             const ok = !!(row && (row.title || row.brand || row.asin || row.price));
-            return { ok, status: ok ? "connected" : "failed", message: ok ? "Sif 连接成功，接口已返回真实商品数据" : "Sif 连接成功但未返回商品数据", data: { ping: list, profile: row } };
+            return { ok, status: ok ? "connected" : "failed", message: ok ? "Sif 连接成功，接口已返回真实商品数据" : "Sif 连接成功但未返回商品数据", data: { ping, profile: row } };
           } catch (err) {
             return { ok: false, status: "failed", message: formatProviderConnectionError(err, "Sif") };
           }
@@ -9676,6 +9950,8 @@ function reviewMainSourceLabel(sourceId) {
 
       const MANUAL_SUMMARY_KEY = "amz_manual_optimization_summary_v1";
       const MANUAL_OVERVIEW_KEY = "amz_manual_optimization_overview_v1";
+      const MANUAL_SUMMARY_IMPORT_KEY = "amz_manual_summary_import_v1";
+      const MANUAL_DEVELOPMENT_REPORT_TEXT_KEY = "amz_manual_development_report_text_v1";
       let summaryEditMode = false;
       let summaryOverviewEditMode = false;
       function loadManualSummaryEdit() {
@@ -9706,16 +9982,38 @@ function reviewMainSourceLabel(sourceId) {
       function clearManualOverviewEdit() {
         try { localStorage.removeItem(MANUAL_OVERVIEW_KEY); } catch (err) { console.warn("综合说明清除失败", err); }
       }
+      function loadManualSummaryImport() {
+        try {
+          const raw = localStorage.getItem(MANUAL_SUMMARY_IMPORT_KEY);
+          if (raw === null) return "";
+          const parsed = JSON.parse(raw);
+          return typeof parsed === "string" ? parsed : String(parsed.text ?? "");
+        } catch (err) { return ""; }
+      }
+      function saveManualSummaryImport(text) {
+        try { localStorage.setItem(MANUAL_SUMMARY_IMPORT_KEY, JSON.stringify({ text: String(text ?? ""), savedAt: Date.now() })); } catch (err) { console.warn("汇总人工导入保存失败", err); }
+      }
+      function clearManualSummaryImport() {
+        try { localStorage.removeItem(MANUAL_SUMMARY_IMPORT_KEY); } catch (err) { console.warn("汇总人工导入清除失败", err); }
+      }
+      function loadManualDevelopmentReportText() {
+        try {
+          const raw = localStorage.getItem(MANUAL_DEVELOPMENT_REPORT_TEXT_KEY);
+          if (raw === null) return "";
+          const parsed = JSON.parse(raw);
+          return typeof parsed === "string" ? parsed : String(parsed.text ?? "");
+        } catch (err) { return ""; }
+      }
+      function saveManualDevelopmentReportText(text) {
+        try { localStorage.setItem(MANUAL_DEVELOPMENT_REPORT_TEXT_KEY, JSON.stringify({ text: String(text ?? ""), savedAt: Date.now() })); } catch (err) { console.warn("优化方向人工文本保存失败", err); }
+      }
+      function clearManualDevelopmentReportText() {
+        try { localStorage.removeItem(MANUAL_DEVELOPMENT_REPORT_TEXT_KEY); } catch (err) { console.warn("优化方向人工文本清除失败", err); }
+      }
       function splitSummaryLines(value) {
         if (!value) return [];
         if (Array.isArray(value)) return value.map((item) => String(item).trim()).filter(Boolean);
         return String(value).split(/\n+/).map((item) => item.trim()).filter(Boolean);
-      }
-      function pushUnique(list, value) {
-        const text = String(value || "").trim();
-        if (!text) return;
-        const key = text.replace(/\s+/g, " ").toLowerCase();
-        if (!list.some((item) => item.key === key)) list.push({ key, text });
       }
       function stripSummaryCount(text) {
         return String(text || "")
@@ -9723,106 +10021,163 @@ function reviewMainSourceLabel(sourceId) {
           .replace(/^[^：:]{1,40}[：:]\s*/, "")
           .replace(/（\d+条，占比\d+%）/g, "")
           .replace(/（覆盖\d+\/\d+，占比\d+%）/g, "")
+          .replace(/（覆盖\d+\/\d+）/g, "")
           .trim();
       }
-      function summaryCategoryLabel(text, group) {
-        const source = stripSummaryCount(text);
-        const lower = source.toLowerCase();
-        const rules = [
-          { label: "多功能集成训练", words: ["多功能", "一体", "合一", "训练模式", "全身", "multi", "all in one"] },
-          { label: "便携折叠收纳", words: ["便携", "折叠", "收纳", "省空间", "空间", "portable", "fold", "compact"] },
-          { label: "稳定防滑和承重", words: ["稳定", "防滑", "不滑", "承重", "稳固", "支撑", "stable", "sturdy", "non slip"] },
-          { label: "材质质感和耐用性", words: ["塑料", "材质", "耐用", "易裂", "偏薄", "毛刺", "断", "质感", "plastic", "flimsy", "crack"] },
-          { label: "阻力带/拉力带质量", words: ["阻力带", "拉力带", "弹力带", "拉力绳", "乳胶", "band", "resistance"] },
-          { label: "说明书和训练指引", words: ["说明书", "说明", "教程", "图文", "instruction", "manual"] },
-          { label: "健腹轮顺滑度", words: ["健腹轮", "卡顿", "顺滑", "ab roller", "wheel"] },
-          { label: "价格和性价比", words: ["价格", "性价比", "物有所值", "预算", "亲民", "value", "price", "budget"] },
-          { label: "适合新手/青少年", words: ["新手", "初学者", "青少年", "beginner", "teen"] },
-          { label: "家庭/小空间训练", words: ["家庭", "家中", "小户型", "公寓", "租房", "home", "apartment"] },
-          { label: "出差旅行/办公室", words: ["出差", "旅行", "办公室", "碎片", "travel", "office"] },
+      function summaryLineKey(text) {
+        return stripSummaryCount(text)
+          .replace(/[，。,.；;：:\s"'“”‘’()[\]（）【】<>《》]/g, "")
+          .toLowerCase();
+      }
+      function isSummaryDataValue(value) {
+        const text = String(value || "").trim();
+        if (!text || text === "--") return false;
+        return !/^(无数据|暂无数据|暂无可统计数据|null|undefined)$/i.test(text);
+      }
+      function summaryAggregationFields() {
+        return [
+          { key: "产品卖点", title: "产品卖点归类", bucket: "selling" },
+          { key: "好评点", title: "好评点归类", bucket: "positive" },
+          { key: "差评点", title: "差评痛点归类", bucket: "negative" },
+          { key: "待改善点", title: "待改善点归类", bucket: "improvements" },
+          { key: "使用人群", title: "使用人群归类", bucket: "audience" },
+          { key: "使用场景", title: "使用场景归类", bucket: "scenarios" },
+          { key: "优化方向", title: "优化方向归类", bucket: "directions" },
         ];
-        const matched = rules.find((rule) => rule.words.some((word) => lower.includes(String(word).toLowerCase())));
-        if (matched) return matched.label;
-        return source || (group || "未分类");
+      }
+      function parseSummaryImportRecords(text) {
+        const raw = String(text || "").trim();
+        if (!raw) return [];
+        const fieldNames = summaryAggregationFields().map((field) => field.key);
+        const isFieldName = (name) => fieldNames.includes(String(name || "").trim());
+        const records = [];
+        let current = { asin: "", obj: emptyProduct("") };
+        let currentKey = "";
+        let hasContent = false;
+        const pushCurrent = () => {
+          if (!hasContent) return;
+          const fallback = "人工导入" + (records.length + 1);
+          const asin = String(current.asin || fallback).trim().toUpperCase();
+          current.obj["ASIN"] = asin;
+          records.push({ asin, obj: current.obj, column: { index: "manual-" + records.length } });
+        };
+        raw.split(/\r?\n/).forEach((line) => {
+          const textLine = String(line || "").trim();
+          if (!textLine) return;
+          const match = textLine.match(/^([^：:]{1,16})\s*[：:]\s*(.*)$/);
+          if (match) {
+            const label = match[1].trim();
+            const value = match[2].trim();
+            if (/^ASIN$/i.test(label)) {
+              if (hasContent) {
+                pushCurrent();
+                current = { asin: "", obj: emptyProduct("") };
+                hasContent = false;
+              }
+              current.asin = value || "";
+              currentKey = "";
+              return;
+            }
+            if (isFieldName(label)) {
+              currentKey = label;
+              if (isSummaryDataValue(value)) {
+                current.obj[currentKey] = [current.obj[currentKey], value].filter(Boolean).join("\n");
+                hasContent = true;
+              }
+              return;
+            }
+          }
+          if (currentKey && isSummaryDataValue(textLine)) {
+            current.obj[currentKey] = [current.obj[currentKey], textLine].filter(Boolean).join("\n");
+            hasContent = true;
+          } else if (!currentKey && isSummaryDataValue(textLine)) {
+            current.obj["优化方向"] = [current.obj["优化方向"], textLine].filter(Boolean).join("\n");
+            hasContent = true;
+          }
+        });
+        pushCurrent();
+        return records;
       }
       function buildOverallOptimizationSummaryModel() {
+        const summaryFields = summaryAggregationFields();
         const products = columns
           .filter((column) => column.product && column.product.done && !column.product.error)
-          .map((column) => ({ column, obj: buildProductFromResult(column.product) }));
-        if (!products.length) return null;
-        const hasValue = (value) => !(value === null || value === undefined || value === "" || (Array.isArray(value) && !value.length));
-        const filledFields = products.reduce((sum, item) => sum + FIELD_KEYS.reduce((count, key) => count + (hasValue(item.obj[key]) ? 1 : 0), 0), 0);
-        const totalFields = products.length * FIELD_KEYS.length;
-        const coveragePct = Math.round(filledFields * 100 / Math.max(totalFields, 1));
-        const buckets = {
-          selling: {}, positive: {}, negative: {}, improvements: {},
-          audience: {}, scenarios: {}, directions: {},
+          .map((column) => {
+            const obj = buildProductFromResult(column.product);
+            const asin = String(obj["ASIN"] || column.asin || column.product.asin || "").trim().toUpperCase();
+            return { column, obj, asin };
+          })
+          .filter((item) => summaryFields.some((field) => splitSummaryLines(item.obj[field.key]).some(isSummaryDataValue)));
+        parseSummaryImportRecords(loadManualSummaryImport()).forEach((item) => {
+          if (summaryFields.some((field) => splitSummaryLines(item.obj[field.key]).some(isSummaryDataValue))) products.push(item);
+        });
+        const buckets = summaryFields.reduce((acc, field) => {
+          acc[field.bucket] = {};
+          return acc;
+        }, {});
+        const addToBucket = (bucket, label, product) => {
+          const key = summaryLineKey(label);
+          if (!key) return;
+          if (!bucket[key]) bucket[key] = { label, refs: new Map() };
+          if (!bucket[key].refs.has(product.asin)) {
+            bucket[key].refs.set(product.asin, { asin: product.asin, index: product.column.index });
+          }
         };
-        const addToBucket = (bucket, label, column, rawLine) => {
-          const key = label.replace(/\s+/g, "").toLowerCase();
-          if (!bucket[key]) bucket[key] = { label, columns: new Set(), examples: [] };
-          bucket[key].columns.add(column.index);
-          const example = stripSummaryCount(rawLine);
-          if (example && !bucket[key].examples.includes(example)) bucket[key].examples.push(example);
-        };
-        products.forEach(({ column, obj }) => {
-          const addField = (key, bucket, group) => {
-            splitSummaryLines(obj[key]).forEach((line) => {
-              addToBucket(bucket, summaryCategoryLabel(line, group), column, line);
+        products.forEach((product) => {
+          summaryFields.forEach((field) => {
+            const seenInAsin = new Set();
+            splitSummaryLines(product.obj[field.key]).forEach((line) => {
+              const label = stripSummaryCount(line);
+              const key = summaryLineKey(label);
+              if (!key || seenInAsin.has(key) || !isSummaryDataValue(label)) return;
+              seenInAsin.add(key);
+              addToBucket(buckets[field.bucket], label, product);
             });
-          };
-          addField("产品卖点", buckets.selling, "产品卖点");
-          addField("好评点", buckets.positive, "好评点");
-          addField("差评点", buckets.negative, "差评点");
-          addField("待改善点", buckets.improvements, "待改善点");
-          addField("使用人群", buckets.audience, "使用人群");
-          addField("使用场景", buckets.scenarios, "使用场景");
-          addField("优化方向", buckets.directions, "优化方向");
+          });
         });
         const formatBucket = (bucket) => Object.values(bucket)
-          .sort((a, b) => b.columns.size - a.columns.size || a.label.localeCompare(b.label, "zh-Hans-CN"))
+          .sort((a, b) => b.refs.size - a.refs.size || a.label.localeCompare(b.label, "zh-Hans-CN"))
           .map((item) => {
-            const pct = Math.round(item.columns.size * 100 / Math.max(products.length, 1));
-            const examples = item.examples.slice(0, 3).filter((x) => x !== item.label);
-            const line = item.label + "（覆盖" + item.columns.size + "/" + products.length + "，占比" + pct + "%）" +
-              (examples.length ? "\n  依据：" + examples.join("；") : "");
+            const refs = Array.from(item.refs.values()).sort((a, b) => {
+              const ai = Number(a.index);
+              const bi = Number(b.index);
+              if (Number.isFinite(ai) && Number.isFinite(bi)) return ai - bi;
+              return String(a.asin || "").localeCompare(String(b.asin || ""), "zh-Hans-CN");
+            });
+            const pct = Math.round(refs.length * 100 / Math.max(products.length, 1));
+            const asins = refs.map((ref) => ref.asin).filter(Boolean);
+            const line = item.label + "（占比" + pct + "%，依据：" + (asins.join("、") || "暂无可统计数据") + "）";
             return {
               label: item.label,
-              count: item.columns.size,
+              count: refs.length,
               total: products.length,
               pct,
-              examples,
+              refs,
+              asins,
               line,
             };
           });
-        const makeGroup = (title, bucket, full = false) => {
+        const makeGroup = (field) => {
+          const bucket = buckets[field.bucket];
           const items = formatBucket(bucket);
-          return { title, items, lines: items.map((item) => item.line), full };
+          return { title: field.title, key: field.key, items, lines: items.map((item) => item.line) };
         };
         return {
           count: products.length,
-          intro: "已汇总竞品数量：" + products.length + "，字段完整度 " + filledFields + "/" + totalFields + "（" + coveragePct + "%）。数据已按优先级自动拉取、缺失自动补齐，空字段保持无数据，后续分析与优化会继续回流到总结层。",
-          groups: [
-            makeGroup("产品卖点归类", buckets.selling),
-            makeGroup("好评点归类", buckets.positive),
-            makeGroup("差评痛点归类", buckets.negative),
-            makeGroup("待改善点归类", buckets.improvements),
-            makeGroup("使用人群归类", buckets.audience),
-            makeGroup("使用场景归类", buckets.scenarios),
-            makeGroup("优化方向归类", buckets.directions, true),
-          ],
+          intro: "共纳入有效竞品/导入来源 " + products.length + " 个；占比按“提到该描述的来源数 / 有效来源数”计算。",
+          sampleNote: products.length < 3 ? "样本数量偏少，汇总结论仅供参考。" : "",
+          groups: summaryFields.map(makeGroup),
         };
       }
       function buildOverallOptimizationSummaryText() {
         const model = buildOverallOptimizationSummaryModel();
         if (!model) return "";
         const sections = [model.intro];
+        if (model.sampleNote) sections.push(model.sampleNote);
         model.groups.forEach((group) => {
           if (group.lines.length) sections.push(group.title + ":\n" + group.lines.join("\n"));
         });
-        if (sections.length === 1) {
-          sections.push("可获取样本量有限，分析仅供参考。当前没有可用于自动总结的评论、卖点、痛点、场景或优化字段。");
-        }
+        if (!model.groups.some((group) => group.lines.length)) return "暂无可统计数据";
         return sections.join("\n\n");
       }
       function summaryToneClass(title) {
@@ -9834,47 +10189,31 @@ function reviewMainSourceLabel(sourceId) {
       }
       function summaryMetricHtml(item) {
         const pct = Math.max(0, Math.min(100, Number(item.pct) || 0));
-        const examples = (item.examples || []).slice(0, 2).filter(Boolean).join("；");
-        return '<div class="summary-metric-row">' +
+        const refs = item.refs || [];
+        const first = refs[0] || {};
+        const chips = refs.length
+          ? '<div class="summary-asin-list">' + refs.map((ref) => '<span class="summary-asin-chip" data-summary-jump="' + esc(ref.index) + '">' + esc(ref.asin) + '</span>').join("") + '</div>'
+          : '<span class="empty">暂无可统计数据</span>';
+        return '<div class="summary-metric-row" data-summary-jump="' + esc(first.index ?? "") + '">' +
           '<div class="summary-metric-desc">' + esc(item.label) +
           '<div class="summary-metric-meta">覆盖 ' + esc(item.count) + '/' + esc(item.total) + '</div></div>' +
           '<div class="summary-bar-wrap">' +
           '<div class="summary-bar-top"><span>占比</span><strong>' + pct + '%</strong></div>' +
           '<div class="summary-progress"><i style="width:' + pct + '%"></i></div>' +
           '</div>' +
-          '<div class="summary-reason">' + (examples ? esc(examples) : '<span class="empty">暂无依据摘要</span>') + '</div>' +
+          '<div class="summary-reason">' + chips + '</div>' +
           '</div>';
       }
-      function summaryOverviewHtml(model, overviewText, overviewManual) {
-        const autoText = model ? model.intro : "暂无可用于自动汇总的数据";
-        const text = overviewText || autoText;
-        if (summaryOverviewEditMode) {
-          return '<div class="summary-overview-edit">' +
-            '<label for="summaryOverviewText">改进方向</label>' +
-            '<textarea id="summaryOverviewText" aria-label="编辑改进方向">' + esc(text) + '</textarea>' +
-            '<div class="summary-edit-actions">' +
-            '<button class="btn btn-secondary btn-small" type="button" data-overview-cancel>取消</button>' +
-            '<button class="btn btn-secondary btn-small" type="button" data-overview-auto>恢复自动</button>' +
-            '<button class="btn btn-primary btn-small" type="button" data-overview-save>保存说明</button>' +
-            '</div></div>';
-        }
-        return '<div class="summary-overview-strip">' +
-          '<strong>改进方向</strong>' +
-          '<span class="summary-overview-text">' + esc(text) + '</span>' +
-          '<span class="summary-overview-actions">' +
-          (overviewManual !== null ? '<button class="btn btn-secondary btn-small" type="button" data-overview-auto>恢复自动</button>' : "") +
-          '<button class="btn btn-secondary btn-small" type="button" data-overview-edit>编辑说明</button>' +
-          '</span></div>';
-      }
-      function summaryDashboardHtml(model, overviewText, overviewManual) {
+      function summaryDashboardHtml(model) {
         if (!model) {
-          return summaryOverviewHtml(model, overviewText, overviewManual) +
-            '<div class="summary-conclusion"><div class="summary-conclusion-body"><span class="empty">暂无可用于自动汇总的数据</span></div></div>';
+          return '<div class="summary-conclusion"><div class="summary-conclusion-body"><span class="empty">暂无可统计数据</span></div></div>';
         }
-        return summaryOverviewHtml(model, overviewText, overviewManual) + '<div class="summary-dashboard">' +
+        return (model.sampleNote ? '<div class="summary-sample-note">' + esc(model.sampleNote) + '</div>' : "") +
+          '<div class="summary-overview-strip"><strong>统计口径</strong><span class="summary-overview-text">' + esc(model.intro) + '</span></div>' +
+          '<div class="summary-dashboard">' +
           model.groups.map((group) => {
             const items = group.items || [];
-            return '<div class="summary-visual-card ' + summaryToneClass(group.title) + (group.full ? " full" : "") + '">' +
+            return '<div class="summary-visual-card ' + summaryToneClass(group.title) + '">' +
               '<div class="summary-visual-head"><h3>' + esc(group.title) + '</h3><span class="summary-visual-count">' + items.length + ' 项</span></div>' +
               '<div class="summary-metric-head"><span>描述</span><span>占比</span><span>依据</span></div>' +
               (items.length ? items.map(summaryMetricHtml).join("") : '<div class="summary-empty-state">暂无可统计数据</div>') +
@@ -9913,16 +10252,17 @@ function reviewMainSourceLabel(sourceId) {
         const host = document.getElementById("optimizationSummaryList");
         if (!host) return;
         const manual = loadManualSummaryEdit();
-        const overviewManual = loadManualOverviewEdit();
         const autoText = buildOverallOptimizationSummaryText();
         const summaryText = manual !== null ? manual : autoText;
         const note = document.getElementById("summarySourceNote");
+        const hasManualImport = parseSummaryImportRecords(loadManualSummaryImport()).length > 0;
         if (note) note.textContent = summaryEditMode
           ? "正在编辑综合总结"
-          : (summaryOverviewEditMode ? "正在编辑综合说明" : ((manual !== null || overviewManual !== null) ? "自动图表 + 人工修改" : "自动汇总 6 列已获取字段"));
+          : (manual !== null
+            ? "自动归类 + 人工综合总结"
+            : (hasManualImport ? "6 列字段 + 人工导入" : "仅读取上方 6 列已解析字段"));
         const model = buildOverallOptimizationSummaryModel();
-        const overviewText = overviewManual !== null ? overviewManual : (model ? model.intro : "");
-        host.innerHTML = summaryDashboardHtml(model, overviewText, overviewManual) + (summaryEditMode
+        host.innerHTML = summaryDashboardHtml(model) + (summaryEditMode
           ? summaryEditPanelHtml(summaryText || autoText)
           : summaryConclusionHtml(summaryText, manual));
         host.querySelectorAll("[data-fold]").forEach((btn) => {
@@ -9933,6 +10273,49 @@ function reviewMainSourceLabel(sourceId) {
             btn.textContent = expanded ? "收起" : "展开";
           });
         });
+        renderProductDevelopmentReport();
+      }
+      function jumpToSummarySource(index) {
+        const n = Number(index);
+        if (!Number.isFinite(n)) return;
+        const col = document.getElementById("col-" + n);
+        if (!col) return;
+        col.scrollIntoView({ behavior: "smooth", block: "start", inline: "nearest" });
+        col.classList.add("summary-focus");
+        window.setTimeout(() => col.classList.remove("summary-focus"), 1800);
+      }
+      function openSummaryImport() {
+        const modal = document.getElementById("summaryImportModal");
+        const ta = document.getElementById("summaryImportText");
+        if (!modal || !ta) return;
+        ta.value = loadManualSummaryImport();
+        const records = parseSummaryImportRecords(ta.value);
+        const meta = document.getElementById("summaryImportMeta");
+        if (meta) meta.textContent = records.length
+          ? "已识别人工导入来源 " + records.length + " 个，保存后参与底部汇总。"
+          : "导入后将与上方 6 列已解析字段一起聚合。";
+        modal.hidden = false;
+        window.setTimeout(() => ta.focus(), 30);
+      }
+      function closeSummaryImport() {
+        const modal = document.getElementById("summaryImportModal");
+        if (modal) modal.hidden = true;
+      }
+      function applySummaryImport() {
+        const ta = document.getElementById("summaryImportText");
+        if (!ta) return;
+        saveManualSummaryImport(ta.value);
+        closeSummaryImport();
+        renderOptimizationSummary();
+        showToast("人工导入内容已参与汇总");
+      }
+      function clearSummaryImport() {
+        clearManualSummaryImport();
+        const ta = document.getElementById("summaryImportText");
+        if (ta) ta.value = "";
+        closeSummaryImport();
+        renderOptimizationSummary();
+        showToast("已清空汇总人工导入");
       }
       function productsSummaryAsins() {
         const list = columns.map((column) => column.product && column.product.done
@@ -9967,6 +10350,271 @@ function reviewMainSourceLabel(sourceId) {
         summaryOverviewEditMode = false;
         renderOptimizationSummary();
         showToast("已恢复自动综合说明");
+      }
+
+      function effectiveReviewCountForProduct(product) {
+        const r = product && product.data && product.data.reviewsData || {};
+        const stats = r.classificationStats || {};
+        const raw = Array.isArray(r.rawReviews) ? r.rawReviews : [];
+        return Number(stats.mergedUniqueTotal ?? stats.uniqueCount ?? stats.rawCount ?? raw.totalUnique ?? raw.length ?? r.rawReviewSnapshotCount ?? 0) || 0;
+      }
+      function developmentReportBaseStats() {
+        const products = columns
+          .filter((column) => column.product && column.product.done && !column.product.error)
+          .map((column) => ({ column, product: column.product, obj: buildProductFromResult(column.product) }))
+          .filter((item) => summaryAggregationFields().some((field) => splitSummaryLines(item.obj[field.key]).some(isSummaryDataValue)));
+        const reviewTotal = products.reduce((sum, item) => sum + effectiveReviewCountForProduct(item.product), 0);
+        const hasManualInput = !!String(loadManualDevelopmentReportText() || "").trim();
+        return { products, reviewTotal, hasManualInput };
+      }
+      function reportWeightLabel(count) {
+        return Number(count) >= 3
+          ? "类目共性痛点/共性卖点"
+          : "个案反馈，参考有限，不可定性为行业普遍现象";
+      }
+      function reviewRowTextForReport(row) {
+        if (!row) return "";
+        if (typeof row === "string") return row.trim();
+        return [row.title, row.content, row.text, row.body, row.comment].map((v) => String(v || "").trim()).filter(Boolean).join("：");
+      }
+      function findReportReviewSample(asins, label) {
+        const targets = new Set((asins || []).map((asin) => String(asin || "").trim().toUpperCase()).filter(Boolean));
+        const query = summaryLineKey(label).slice(0, 8);
+        const candidates = [];
+        columns.forEach((column) => {
+          const asin = String(column.asin || column.product?.asin || "").trim().toUpperCase();
+          if (!targets.has(asin)) return;
+          const rows = column.product?.data?.reviewsData?.rawReviews;
+          if (Array.isArray(rows)) rows.slice(0, 30).forEach((row) => candidates.push(reviewRowTextForReport(row)));
+        });
+        Object.values(loadManualReviewSnapshots()).forEach((snap) => {
+          const asin = String(snap && snap.asin || "").trim().toUpperCase();
+          if (!targets.has(asin) || !Array.isArray(snap.rows)) return;
+          snap.rows.slice(0, 30).forEach((row) => candidates.push(reviewRowTextForReport(row)));
+        });
+        const normalized = candidates.map((text) => String(text || "").trim()).filter(Boolean);
+        const hit = normalized.find((text) => query && summaryLineKey(text).includes(query)) || normalized[0] || "";
+        return hit.length > 96 ? hit.slice(0, 96) + "..." : hit;
+      }
+      function reportSourceText(item) {
+        const asins = (item.asins || []).filter(Boolean);
+        const source = asins.length ? asins.join("、") : "暂无可统计数据";
+        const sample = findReportReviewSample(asins, item.label);
+        return "依据：" + source + "；" + (sample ? "原始评论样本：" + sample : "原始字段样本：" + item.label);
+      }
+      function reportEntry(text, item, module, type) {
+        return {
+          module,
+          type,
+          text,
+          label: item.label,
+          count: item.count || 0,
+          total: item.total || 0,
+          pct: item.pct || 0,
+          asins: item.asins || [],
+          refs: item.refs || [],
+          weight: reportWeightLabel(item.count || 0),
+          source: reportSourceText(item),
+        };
+      }
+      function itemsBySummaryKey(model, key) {
+        const group = model && model.groups && model.groups.find((item) => item.key === key);
+        return group && Array.isArray(group.items) ? group.items : [];
+      }
+      function uniqueReportEntries(entries) {
+        const seen = new Set();
+        return entries.filter((entry) => {
+          const key = summaryLineKey(entry.module + entry.text);
+          if (!key || seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+      }
+      function limitReportEntries(modules, maxTotal) {
+        if (!Number.isFinite(maxTotal)) return modules;
+        const names = ["开发方向", "功能参数清单", "差异化建议"];
+        const out = { "开发方向": [], "功能参数清单": [], "差异化建议": [] };
+        const target = { "开发方向": 4, "功能参数清单": 3, "差异化建议": 3 };
+        names.forEach((name) => { out[name] = (modules[name] || []).slice(0, target[name]); });
+        let used = names.reduce((sum, name) => sum + out[name].length, 0);
+        if (used < maxTotal) {
+          names.forEach((name) => {
+            const rest = (modules[name] || []).slice(out[name].length);
+            while (used < maxTotal && rest.length) {
+              out[name].push(rest.shift());
+              used += 1;
+            }
+          });
+        }
+        return out;
+      }
+      function classifyDevelopmentTextLine(line) {
+        const text = String(line || "");
+        if (/参数|规格|尺寸|材质|重量|承重|结构|BOM|配件|工艺|测试|验收|清单|硬件/i.test(text)) return "功能参数清单";
+        if (/差异|差异化|创新|区别|加分|可选|升级|避开|拉开|设计思路|卖点表达/i.test(text)) return "差异化建议";
+        return "开发方向";
+      }
+      function parseManualDevelopmentReportText(text) {
+        const raw = String(text || "").trim();
+        const modules = { "开发方向": [], "功能参数清单": [], "差异化建议": [] };
+        if (!raw) return modules;
+        let current = "";
+        raw.split(/\r?\n/).forEach((line) => {
+          let item = String(line || "").trim();
+          if (!item) return;
+          const heading = item.match(/^(开发方向|功能参数清单|差异化建议)\s*[：:]?\s*(.*)$/);
+          if (heading) {
+            current = heading[1];
+            item = heading[2].trim();
+            if (!item) return;
+          }
+          item = item.replace(/^[-•*·\d.、\s]+/, "").trim();
+          if (!item) return;
+          const module = current || classifyDevelopmentTextLine(item);
+          modules[module].push({
+            module,
+            type: "人工导入文本",
+            text: item,
+            label: item,
+            count: 1,
+            total: 1,
+            pct: 100,
+            asins: ["人工导入文本"],
+            refs: [{ asin: "人工导入文本", index: "manual-development" }],
+            weight: "人工导入文本",
+            source: "依据：人工导入文本；原始文本样本：" + item,
+          });
+        });
+        Object.keys(modules).forEach((key) => { modules[key] = uniqueReportEntries(modules[key]); });
+        return modules;
+      }
+      function buildManualDevelopmentReportModel(text) {
+        const modules = parseManualDevelopmentReportText(text);
+        const total = Object.values(modules).reduce((sum, list) => sum + list.length, 0);
+        return {
+          ready: total > 0,
+          manual: true,
+          warn: total === 0,
+          note: total
+            ? "来源：人工导入文本；当前报告不依赖第一层竞品解析和第二层汇总视图。共生成 " + total + " 条要点。"
+            : "请先粘贴人工导入文本，或等待第一层、第二层完成后自动生成报告。",
+          modules,
+        };
+      }
+      function buildProductDevelopmentReportModel() {
+        const manualText = String(loadManualDevelopmentReportText() || "").trim();
+        if (manualText) return buildManualDevelopmentReportModel(manualText);
+        const summaryModel = buildOverallOptimizationSummaryModel();
+        const base = developmentReportBaseStats();
+        const noteParts = [
+          "参与分析竞品/导入来源：" + (summaryModel ? summaryModel.count : 0) + " 个",
+          "有效评论总条数：" + base.reviewTotal + " 条",
+        ];
+        if (!summaryModel || !summaryModel.groups.some((group) => group.items && group.items.length)) {
+          return {
+            ready: false,
+            note: noteParts.join("；") + "。需先完成第一层竞品解析与第二层汇总视图输出，当前暂无可生成报告的数据。",
+            warn: true,
+            modules: { "开发方向": [], "功能参数清单": [], "差异化建议": [] },
+          };
+        }
+        const selling = itemsBySummaryKey(summaryModel, "产品卖点");
+        const positive = itemsBySummaryKey(summaryModel, "好评点");
+        const negative = itemsBySummaryKey(summaryModel, "差评点");
+        const improvements = itemsBySummaryKey(summaryModel, "待改善点");
+        const audience = itemsBySummaryKey(summaryModel, "使用人群");
+        const scenarios = itemsBySummaryKey(summaryModel, "使用场景");
+        const directions = itemsBySummaryKey(summaryModel, "优化方向");
+        const modules = {
+          "开发方向": uniqueReportEntries([]
+            .concat(selling.slice(0, 3).map((item) => reportEntry("新品定位需保留并强化「" + item.label + "」。", item, "开发方向", "卖点承接")))
+            .concat(positive.slice(0, 3).map((item) => reportEntry("围绕用户认可的「" + item.label + "」设计核心体验。", item, "开发方向", "用户需求")))
+            .concat(audience.slice(0, 2).map((item) => reportEntry("目标用户侧重点可围绕「" + item.label + "」。", item, "开发方向", "人群定位")))
+            .concat(scenarios.slice(0, 2).map((item) => reportEntry("使用场景侧重点可围绕「" + item.label + "」。", item, "开发方向", "场景定位")))
+            .concat(negative.slice(0, 2).map((item) => reportEntry("开发阶段需规避现有竞品暴露的「" + item.label + "」。", item, "开发方向", "缺陷规避")))),
+          "功能参数清单": uniqueReportEntries([]
+            .concat(improvements.slice(0, 4).map((item) => reportEntry("规格书需设置「" + item.label + "」对应的验收项。", item, "功能参数清单", "刚需改进项")))
+            .concat(negative.slice(0, 4).map((item) => reportEntry("打样测试需验证并规避「" + item.label + "」。", item, "功能参数清单", "风险验证项")))
+            .concat(selling.slice(0, 2).map((item) => reportEntry("BOM/结构拆解需保留支撑「" + item.label + "」的配置项。", item, "功能参数清单", "配置保留项")))),
+          "差异化建议": uniqueReportEntries([]
+            .concat(improvements.slice(0, 3).map((item) => reportEntry((item.count >= 3 ? "刚需改进项" : "加分可选项") + "：围绕「" + item.label + "」做差异化优化。", item, "差异化建议", item.count >= 3 ? "刚需改进项" : "加分可选项")))
+            .concat(directions.slice(0, 3).map((item) => reportEntry("差异化表达可聚焦「" + item.label + "」。", item, "差异化建议", "方向承接")))
+            .concat(positive.slice(0, 2).map((item) => reportEntry("在竞品已有优势「" + item.label + "」上做更明确的体验呈现。", item, "差异化建议", "优势放大")))),
+        };
+        const maxTotal = base.hasManualInput ? Infinity : 10;
+        const limited = limitReportEntries(modules, maxTotal);
+        const lowSample = summaryModel.count < 3 || base.reviewTotal < 10;
+        return {
+          ready: true,
+          warn: lowSample,
+          note: noteParts.join("；") + "。" + (lowSample ? "样本量不足，结论参考性低，不强行视为完整行业结论。" : "报告仅基于第一层原始字段和第二层汇总视图生成。"),
+          modules: limited,
+        };
+      }
+      function developmentReportItemHtml(entry) {
+        const refs = (entry.refs || []).filter((ref) => ref && ref.index !== undefined);
+        const chips = refs.length
+          ? refs.map((ref) => '<span class="summary-asin-chip" data-summary-jump="' + esc(ref.index) + '">' + esc(ref.asin) + '</span>').join("")
+          : '<span class="summary-asin-chip">暂无依据</span>';
+        return '<div class="development-report-item">' +
+          '<strong>' + esc(entry.text) + '</strong>' +
+          '<div class="development-report-meta">' +
+          '<span class="development-report-badge">' + esc(entry.weight) + '</span>' +
+          '<span class="development-report-badge">覆盖 ' + esc(entry.count) + '/' + esc(entry.total) + '</span>' +
+          '<span class="development-report-badge">' + esc(entry.type) + '</span>' +
+          '</div>' +
+          '<div class="summary-asin-list">' + chips + '</div>' +
+          '<div class="development-report-source">' + esc(entry.source) + '</div>' +
+          '</div>';
+      }
+      function renderProductDevelopmentReport() {
+        const body = document.getElementById("productDevelopmentReportBody");
+        if (!body) return;
+        const model = buildProductDevelopmentReportModel();
+        const note = document.getElementById("developmentReportNote");
+        if (note) note.textContent = model.manual ? "人工导入文本生成" : (model.ready ? "已基于汇总视图生成" : "等待汇总视图输出");
+        const moduleNames = ["开发方向", "功能参数清单", "差异化建议"];
+        body.innerHTML =
+          '<div class="development-report-note' + (model.warn ? " warn" : "") + '">' + esc(model.note) + '</div>' +
+          '<div class="development-report-grid">' +
+          moduleNames.map((name) => {
+            const items = model.modules[name] || [];
+            return '<div class="development-report-card"><h3>' + esc(name) + '</h3><div class="development-report-items">' +
+              (items.length ? items.map(developmentReportItemHtml).join("") : '<div class="summary-empty-state">暂无可统计数据</div>') +
+              '</div></div>';
+          }).join("") +
+          '</div>';
+      }
+      function openDevelopmentReportImport() {
+        const modal = document.getElementById("developmentReportImportModal");
+        const ta = document.getElementById("developmentReportImportText");
+        if (!modal || !ta) return;
+        ta.value = loadManualDevelopmentReportText();
+        const count = Object.values(parseManualDevelopmentReportText(ta.value)).reduce((sum, list) => sum + list.length, 0);
+        const meta = document.getElementById("developmentReportImportMeta");
+        if (meta) meta.textContent = count ? "已识别 " + count + " 条人工导入文本要点，保存后直接生成第三层报告。" : "保存后将直接生成第三层产品开发报告。";
+        modal.hidden = false;
+        window.setTimeout(() => ta.focus(), 30);
+      }
+      function closeDevelopmentReportImport() {
+        const modal = document.getElementById("developmentReportImportModal");
+        if (modal) modal.hidden = true;
+      }
+      function applyDevelopmentReportImport() {
+        const ta = document.getElementById("developmentReportImportText");
+        if (!ta) return;
+        saveManualDevelopmentReportText(ta.value);
+        closeDevelopmentReportImport();
+        renderProductDevelopmentReport();
+        showToast("人工导入文本已生成优化方向报告");
+      }
+      function clearDevelopmentReportImport() {
+        clearManualDevelopmentReportText();
+        const ta = document.getElementById("developmentReportImportText");
+        if (ta) ta.value = "";
+        closeDevelopmentReportImport();
+        renderProductDevelopmentReport();
+        showToast("已清空优化方向人工导入文本");
       }
 
       function buildColumnShell(index) {
@@ -10121,6 +10769,7 @@ function reviewMainSourceLabel(sourceId) {
         if (badge) badge.classList.remove("done");
         clearColumnState(index);
         renderColumn(column);
+        renderOptimizationSummary();
         updateStatusText("已重置竞品 " + COLUMN_KEYS[index] + " 列");
       }
 
@@ -10351,11 +11000,40 @@ function reviewMainSourceLabel(sourceId) {
           if (!handled) showToast("剪贴板里没有可粘贴的图片");
         });
       });
-      document.getElementById("summaryEditBtn").addEventListener("click", () => {
-        summaryEditMode = true;
+      document.getElementById("summaryImportBtn").addEventListener("click", openSummaryImport);
+      document.getElementById("summaryRefreshBtn").addEventListener("click", () => {
         renderOptimizationSummary();
+        showToast("汇总已刷新");
+      });
+      document.getElementById("developmentReportRefreshBtn").addEventListener("click", () => {
+        renderProductDevelopmentReport();
+        showToast("优化方向报告已刷新");
+      });
+      document.getElementById("developmentReportImportBtn").addEventListener("click", openDevelopmentReportImport);
+      document.getElementById("developmentReportImportClose").addEventListener("click", closeDevelopmentReportImport);
+      document.getElementById("developmentReportImportCancel").addEventListener("click", closeDevelopmentReportImport);
+      document.getElementById("developmentReportImportApply").addEventListener("click", applyDevelopmentReportImport);
+      document.getElementById("developmentReportImportClear").addEventListener("click", clearDevelopmentReportImport);
+      document.getElementById("developmentReportImportModal").addEventListener("click", (e) => {
+        if (e.target.id === "developmentReportImportModal") closeDevelopmentReportImport();
+      });
+      document.getElementById("developmentReportImportText").addEventListener("input", () => {
+        const count = Object.values(parseManualDevelopmentReportText(document.getElementById("developmentReportImportText").value)).reduce((sum, list) => sum + list.length, 0);
+        const meta = document.getElementById("developmentReportImportMeta");
+        if (meta) meta.textContent = count ? "已识别 " + count + " 条人工导入文本要点，保存后直接生成第三层报告。" : "未识别到有效文本；可按开发方向、功能参数清单、差异化建议填写。";
+      });
+      document.getElementById("productDevelopmentReportCard").addEventListener("click", (e) => {
+        const jumpTarget = e.target.closest("[data-summary-jump]");
+        if (jumpTarget && jumpTarget.dataset.summaryJump !== "") {
+          jumpToSummarySource(jumpTarget.dataset.summaryJump);
+        }
       });
       document.getElementById("optimizationSummaryCard").addEventListener("click", (e) => {
+        const jumpTarget = e.target.closest("[data-summary-jump]");
+        if (jumpTarget && jumpTarget.dataset.summaryJump !== "") {
+          jumpToSummarySource(jumpTarget.dataset.summaryJump);
+          return;
+        }
         if (e.target.closest("[data-overview-save]")) { saveOptimizationOverviewEdit(); return; }
         if (e.target.closest("[data-overview-auto]")) { restoreAutoOptimizationOverview(); return; }
         if (e.target.closest("[data-overview-edit]")) {
@@ -10379,6 +11057,20 @@ function reviewMainSourceLabel(sourceId) {
           summaryEditMode = false;
           renderOptimizationSummary();
         }
+      });
+      document.getElementById("summaryImportClose").addEventListener("click", closeSummaryImport);
+      document.getElementById("summaryImportCancel").addEventListener("click", closeSummaryImport);
+      document.getElementById("summaryImportApply").addEventListener("click", applySummaryImport);
+      document.getElementById("summaryImportClear").addEventListener("click", clearSummaryImport);
+      document.getElementById("summaryImportModal").addEventListener("click", (e) => {
+        if (e.target.id === "summaryImportModal") closeSummaryImport();
+      });
+      document.getElementById("summaryImportText").addEventListener("input", () => {
+        const records = parseSummaryImportRecords(document.getElementById("summaryImportText").value);
+        const meta = document.getElementById("summaryImportMeta");
+        if (meta) meta.textContent = records.length
+          ? "已识别人工导入来源 " + records.length + " 个，保存后参与底部汇总。"
+          : "未识别到有效字段；可按 ASIN、产品卖点、好评点、差评点、待改善点、使用人群、使用场景、优化方向填写。";
       });
       document.getElementById("reviewImportClose").addEventListener("click", closeReviewImport);
       document.getElementById("reviewImportCancel").addEventListener("click", closeReviewImport);
@@ -10975,6 +11667,22 @@ function reviewMainSourceLabel(sourceId) {
         });
       }
 
+      function bindCollapseToggle(buttonId, bodyId) {
+        const btn = document.getElementById(buttonId);
+        const body = document.getElementById(bodyId);
+        if (!btn || !body) return;
+        const update = () => {
+          const expanded = !body.hidden;
+          btn.textContent = expanded ? "收起" : "展开";
+          btn.setAttribute("aria-expanded", expanded ? "true" : "false");
+        };
+        btn.addEventListener("click", () => {
+          body.hidden = !body.hidden;
+          update();
+        });
+        update();
+      }
+
       /* 配置面板数据源切换 */
       document.getElementById("sourceSelect").addEventListener("change", (e) => {
         manager.activeMain = e.target.value;
@@ -11079,6 +11787,9 @@ function reviewMainSourceLabel(sourceId) {
         initSourceSelect();
         applyConfigToForm();
         initConfigModal();
+        bindCollapseToggle("topPanelToggle", "topPanelBody");
+        bindCollapseToggle("summaryPanelToggle", "optimizationSummaryList");
+        bindCollapseToggle("developmentReportToggle", "productDevelopmentReportBody");
         initColumns();
         renderProviderLogs();
         updateSourceStatus();
