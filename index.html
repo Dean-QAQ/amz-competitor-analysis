@@ -9363,7 +9363,7 @@ function finalizeReviewAnalysisState(state) {
         html += '<div class="card-section"><div class="card-section-head blue">基础商品信息</div><div class="card-section-body">';
         html += rowHtml("品牌", obj["品牌"]);
         html += rowHtml("图片", image.src, { image: true, fallback: image.fallback || "" });
-        html += rowHtml("ASIN", obj["ASIN"], { link: true, href: obj["链接"] || amazonProductUrl(obj["ASIN"], obj["站点"] || obj["marketplace"]) });
+        html += rowHtml("ASIN", obj["ASIN"]);
         html += rowHtml("链接", obj["链接"], { link: true });
         html += rowHtml("标题", obj["标题"], { fold: true });
         html += rowHtml("售价", obj["售价"]);
@@ -10548,7 +10548,7 @@ function finalizeReviewAnalysisState(state) {
         if (opts.number && Number.isFinite(Number(value))) return '<c r="' + ref + '"' + style + '><v>' + Number(value) + "</v></c>";
         return '<c r="' + ref + '"' + style + ' t="inlineStr"><is><t xml:space="preserve">' + xmlEsc(String(value ?? "")) + "</t></is></c>";
       }
-      function buildSheet1Rows(rows) {
+      async function buildSheet1Rows(rows) {
         const out = [];
         out.push({ cells: [{ v: "字段维度", style: 1 }].concat(rows.map((item) => ({ v: item.brand, style: 1 }))) });
         EXPORT_FIELD_ORDER.forEach((field) => {
@@ -10556,11 +10556,9 @@ function finalizeReviewAnalysisState(state) {
           rows.forEach((item) => {
             let v = exportValue(item.data[field]);
             let style = 2;
+            /* 主图兜底已在导出入口预取，这里只读取结果 */
             if (field === "售价" && /原价|折扣|-\d+%/.test(v)) style = 3;
-            if (field === "ASIN") {
-              const link = exportLinkFor(item.data);
-              v = link ? (v + "\n" + link) : v;
-            }
+            if (field === "ASIN") { v = item.data["ASIN"] || v; }
             cells.push({ v, style });
           });
           out.push({ cells });
@@ -10701,10 +10699,27 @@ function finalizeReviewAnalysisState(state) {
       async function fetchImageBytes(src) {
         try {
           if (!src) return null;
-          const res = await fetch(src);
-          if (!res.ok) return null;
-          const bytes = new Uint8Array(await res.arrayBuffer());
-          return bytes.length > 100 ? bytes : null;
+          const text = String(src).trim();
+          let candidates = [text];
+          if (/^https?:\/\//i.test(text) && !text.includes("127.0.0.1")) {
+            candidates.unshift("/api/image-proxy?url=" + encodeURIComponent(text));
+          }
+          if (text.startsWith("data:")) {
+            const base64 = text.split(",")[1] || "";
+            const bin = atob(base64);
+            const bytes = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+            return bytes.length > 100 ? bytes : null;
+          }
+          for (const candidate of candidates) {
+            try {
+              const res = await fetch(candidate);
+              if (!res.ok) continue;
+              const bytes = new Uint8Array(await res.arrayBuffer());
+              if (bytes.length > 100) return bytes;
+            } catch (err) { /* 试下一个候选地址 */ }
+          }
+          return null;
         } catch (err) { return null; }
       }
       function detectImageExt(bytes) {
@@ -10735,6 +10750,17 @@ function finalizeReviewAnalysisState(state) {
         }
         return out;
       }
+      /* 导出兜底：接口没给主图时，从亚马逊商品页抓真实主图，失败返回空由“无数据”接管 */
+      async function fetchAmazonPageImageForExport(asin) {
+        try {
+          const res = await fetchLocalApi("api/amazon/product-page?asin=" + encodeURIComponent(String(asin).toUpperCase()) +
+            "&site=" + encodeURIComponent(normalizeMarketplaceSite(manager?.config?.general?.site || "US")));
+          if (!res || !res.ok) return "";
+          const page = await res.json();
+          return page && page.found && page.imageUrl ? String(page.imageUrl) : "";
+        } catch (err) { return ""; }
+      }
+
       async function exportData(type) {
         if (!exportRows().length) { showToast("暂无可导出的竞品数据，请先查询"); return; }
         showToast("正在生成文件，请稍候");
@@ -10746,8 +10772,16 @@ function finalizeReviewAnalysisState(state) {
           }
           if (type === "xlsx") {
             const rows = exportRows();
+            /* 接口没返回主图时，逐列用亚马逊商品页真实主图兜底 */
+            for (const item of rows) {
+              if (item.data["图片"] && String(item.data["图片"]).trim()) continue;
+              const asin = item.data["ASIN"] || "";
+              if (!/^[A-Z0-9]{10}$/i.test(asin)) continue;
+              const pageImg = await fetchAmazonPageImageForExport(asin);
+              if (pageImg) item.data["图片"] = pageImg;
+            }
             const images = await collectExportImages(rows);
-            const model = { rows, sheet1: buildSheet1Rows(rows), sheet2: buildSheet2Rows(rows), summaryText: buildOverallOptimizationSummaryText() || "无数据" };
+            const model = { rows, sheet1: await buildSheet1Rows(rows), sheet2: buildSheet2Rows(rows), summaryText: buildOverallOptimizationSummaryText() || "无数据" };
             downloadBlob("竞品分析_" + timestampForFile() + ".xlsx", buildXlsx(model, images));
             showToast(images.length ? "已嵌入 " + images.length + " 张图片" : "图片源不可嵌入，已保留链接");
             return;
