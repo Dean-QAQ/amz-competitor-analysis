@@ -1,7 +1,6 @@
 ﻿<!doctype html>
 <html lang="zh-CN">
   <head>
-    <script src="/vendor/exceljs.min.js"></script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>亚马逊竞品自动化分析系统</title>
@@ -90,7 +89,6 @@
         white-space: nowrap;
       }
       .icon-btn:hover { background: #f8fafc; border-color: #9fb2c8; }
-      @media print { body * { visibility: hidden; } }
       .query-row { display: flex; align-items: center; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
       .query-row input {
         flex: 1 1 420px;
@@ -1908,15 +1906,6 @@
           <label class="source-picker">
             <span>数据源</span>
             <select id="sourceSelect"></select>
-          </label>
-          <label class="source-picker">
-            <span>导出</span>
-            <select id="exportSelect">
-              <option value="">选择格式</option>
-              <option value="xlsx">Excel (.xlsx)</option>
-              <option value="json">JSON 数据</option>
-              <option value="pdf">PDF 报告</option>
-            </select>
           </label>
           <button class="icon-btn" id="shareConfigBtn" type="button">分享配置</button>
           <button class="icon-btn" id="configBtn" type="button">数据源配置</button>
@@ -6329,34 +6318,7 @@ function reviewMainSourceLabel(sourceId) {
           includeSummary: true,
         };
       }
-            function inferAudienceFromReviews(state) {
-        const text = (state.allReviews || state.sampleReviews || []).map((row) => [row.title, row.content, row.text].filter(Boolean).join(" ")).join(" ").toLowerCase();
-        const rules = [
-          { test: ["children", "kids", "kid", "daughter", "son", "grandchild", "child"], value: "家庭儿童" },
-          { test: ["gift", "birthday", "christmas"], value: "送礼家庭" },
-          { test: ["home", "kitchen", "house", "apartment", "family"], value: "家庭用户" },
-          { test: ["camping", "outdoor", "travel", "road trip", "beach"], value: "户外露营人群" },
-          { test: ["gym", "workout", "fitness", "exercise"], value: "健身爱好者" },
-          { test: ["office", "desk", "work"], value: "办公人群" },
-        ];
-        const hits = rules.filter((rule) => rule.test.some((word) => text.includes(word))).map((rule) => rule.value);
-        return hits.length ? hits.slice(0, 3).join("、") : "";
-      }
-      function inferScenarioFromReviews(state) {
-        const text = (state.allReviews || state.sampleReviews || []).map((row) => [row.title, row.content, row.text].filter(Boolean).join(" ")).join(" ").toLowerCase();
-        const rules = [
-          { test: ["kitchen", "cooking", "play kitchen", "pretend"], value: "居家厨房角色扮演" },
-          { test: ["gift", "birthday", "holiday"], value: "节日礼物场景" },
-          { test: ["home", "living room", "bedroom"], value: "居家使用" },
-          { test: ["camping", "outdoor", "beach", "road trip", "travel"], value: "户外旅行" },
-          { test: ["gym", "home gym", "workout"], value: "居家健身" },
-          { test: ["office", "desk"], value: "办公室使用" },
-          { test: ["storage", "organize", "garage"], value: "车库收纳" },
-        ];
-        const hits = rules.filter((rule) => rule.test.some((word) => text.includes(word))).map((rule) => rule.value);
-        return hits.length ? hits.slice(0, 3).join("、") : "";
-      }
-function finalizeReviewAnalysisState(state) {
+      function finalizeReviewAnalysisState(state) {
         const total = Math.max(0, Number(state.uniqueCount) || 0);
         const out = empty("reviewsData", state.asin, manager?.config?.general?.site || "US");
         if (!total) return out;
@@ -6378,30 +6340,22 @@ function finalizeReviewAnalysisState(state) {
           positiveTop.reduce((counts, item) => { counts[item.label] = item.count; return counts; }, {}),
           total, 5
         );
-        /* 差评点保留用户原始抱怨，待改善点转为产品侧改进建议，避免两者重复。 */
-        const negativeEntries = negativeTop.slice();
-        const improvementEntries = improvementTop.filter((item) => !negativeTop.some((neg) => neg.label === item.label));
         out.negativeReviews = formatRuleCounts(
-          negativeEntries.reduce((counts, item) => { counts[item.label] = item.count; return counts; }, {}),
+          negativeTop.reduce((counts, item) => { counts[item.label] = item.count; return counts; }, {}),
           total, 5
         );
         out.improvementPoints = formatRuleCounts(
-          improvementEntries.reduce((counts, item) => { counts[buildUpgradeSuggestion(item.label)] = item.count; return counts; }, {}),
+          improvementTop.reduce((counts, item) => { counts[item.label] = item.count; return counts; }, {}),
           total, 5
         );
-        /* 人群与场景必须有兜底结论，不允许输出 -- 或空值。 */
-        const audienceText = formatRuleCounts(
+        out.targetAudience = formatRuleCounts(
           targetTop.reduce((counts, item) => { counts[item.label] = item.count; return counts; }, {}),
           total, 5
         );
-        const scenarioText = formatRuleCounts(
+        out.useScenarios = formatRuleCounts(
           scenarioTop.reduce((counts, item) => { counts[item.label] = item.count; return counts; }, {}),
           total, 5
         );
-        const fallbackAudience = inferAudienceFromReviews(state);
-        const fallbackScenario = inferScenarioFromReviews(state);
-        out.targetAudience = audienceText || (fallbackAudience ? "评论样本不足，推测人群：" + fallbackAudience : "暂无足够评论数据");
-        out.useScenarios = scenarioText || (fallbackScenario ? "评论样本不足，推测场景：" + fallbackScenario : "暂无足够评论数据");
         out.positiveKeywords = splitSummaryLines(out.positiveReviews).map((line) => line.replace(/（.*$/, ""));
         out.negativeKeywords = splitSummaryLines(out.negativeReviews).map((line) => line.replace(/（.*$/, ""));
         out.rawReviews = filteredRawReviews;
@@ -8251,7 +8205,6 @@ function finalizeReviewAnalysisState(state) {
         text = text
           .replace(/(\d+)\.\s+(\d+)/g, "$1.$2")
           .replace(/\s*[xX×]\s*/g, " x ");
-        text = text.replace(/(\d+(?:\.\d+)?)\s*\*\s*(\d+(?:\.\d+)?)\s*\*\s*(\d+(?:\.\d+)?)/g, "$1 x $2 x $3");
         const toCm = (n) => formatMetricNumber(Number(n) * 2.54);
         const toKg = (n) => formatMetricNumber(Number(n) * 0.45359237);
         const toKgFromG = (n) => formatMetricNumber(Number(n) / 1000);
@@ -8266,9 +8219,8 @@ function finalizeReviewAnalysisState(state) {
         text = text.replace(/(\d+(?:\.\d+)?)\s*(?:英寸|inches?|inch|["”])(?=$|[\s,，.;；、)\]\n])/gi, (_, n) => toCm(n) + "厘米");
         text = text.replace(/(\d+(?:\.\d+)?)\s*(?:磅|pounds?|pound|lbs?|lb)(?=$|[\s,，.;；、)\]\n])/gi, (_, n) => toKg(n) + "千克");
         text = text.replace(/(\d+(?:\.\d+)?)\s*(?:千克|kilograms?|kilogram|kgs?|kg)(?=$|[\s,，.;；、)\]\n])/gi, (_, n) => formatMetricNumber(n) + "千克");
-        text = text.replace(/(\d+(?:\.\d+)?)\s*(?:升|litres?|liters?)(?=$|[\s,，.;；、)\]\n])/gi, (_, n) => formatMetricNumber(n) + "升");
         text = text.replace(/(\d+(?:\.\d+)?)\s*(?:克|grams?|gram|g)(?=$|[\s,，.;；、)\]\n])/gi, (_, n) => toKgFromG(n) + "千克");
-        text = text.replace(/(\d+(?:\.\d+)?)\s*(?:厘米|centimetres?|centimeters?|centimeter|cms?|cm)(?=$|[\s,，.;；、)\]\n])/gi, (_, n) => formatMetricNumber(n) + "厘米");
+        text = text.replace(/(\d+(?:\.\d+)?)\s*(?:厘米|centimeters?|centimeter|cms?|cm)(?=$|[\s,，.;；、)\]\n])/gi, (_, n) => formatMetricNumber(n) + "厘米");
         return text;
       }
       function removeBrandFromProductParams(value) {
@@ -8382,9 +8334,7 @@ function finalizeReviewAnalysisState(state) {
           const formatted = formatProductParamValue(label, val);
           if (!formatted) return;
           const old = picked.get(label) || "";
-          if (!(old && (old.includes(formatted) || formatted.includes(old)))) {
-            if (!old || formatted.length > old.length) picked.set(label, formatted);
-          }
+          if (!old || formatted.length > old.length) picked.set(label, formatted);
         });
         if (!picked.size) {
           const fallback = normalizeEnglishPeriod(convertMeasurementsToMetric(translateToChineseText(removeBrandFromProductParams(value))));
@@ -8824,96 +8774,24 @@ function finalizeReviewAnalysisState(state) {
       function screenshotIdFor(asin, fieldKey) {
         return String(asin || "").toUpperCase() + "|" + fieldKey;
       }
-      /* 截图存储：IndexedDB 大容量存储，原图直存不狠压，避免 localStorage 5MB 上限导致失败/模糊 */
-      let screenshotDbPromise = null;
-      function screenshotDb() {
-        if (!screenshotDbPromise) {
-          screenshotDbPromise = new Promise((resolve, reject) => {
-            const req = indexedDB.open("amz_competitor_screenshots", 1);
-            req.onupgradeneeded = () => { req.result.createObjectStore("shots"); };
-            req.onsuccess = () => resolve(req.result);
-            req.onerror = () => reject(req.error || new Error("IndexedDB 打开失败"));
-          });
+      function loadScreenshots() {
+        try { return JSON.parse(localStorage.getItem(SCREENSHOT_KEY) || "{}"); } catch (err) { return {}; }
+      }
+      function saveScreenshots(map) {
+        try { localStorage.setItem(SCREENSHOT_KEY, JSON.stringify(map)); } catch (err) {
+          console.warn("截图保存失败，可能超出浏览器本地存储限制", err);
+          showToast("截图过大，浏览器本地存储保存失败");
         }
-        return screenshotDbPromise;
-      }
-      async function screenshotDbSet(id, dataUrl) {
-        const db = await screenshotDb();
-        return new Promise((resolve, reject) => {
-          const tx = db.transaction("shots", "readwrite");
-          const store = tx.objectStore("shots");
-          if (dataUrl) store.put(dataUrl, id); else store.delete(id);
-          tx.oncomplete = () => resolve(true);
-          tx.onerror = () => reject(tx.error || new Error("IndexedDB 写入失败"));
-        });
-      }
-      async function screenshotDbGet(id) {
-        const db = await screenshotDb();
-        return new Promise((resolve) => {
-          const req = db.transaction("shots", "readonly").objectStore("shots").get(id);
-          req.onsuccess = () => resolve(req.result || "");
-          req.onerror = () => resolve("");
-        });
-      }
-      async function screenshotDbAll() {
-        const db = await screenshotDb();
-        return new Promise((resolve) => {
-          const store = db.transaction("shots", "readonly").objectStore("shots");
-          const out = {};
-          const req = store.openCursor();
-          req.onsuccess = () => {
-            const cursor = req.result;
-            if (cursor) { out[cursor.key] = cursor.value; cursor.continue(); }
-            else resolve(out);
-          };
-          req.onerror = () => resolve({});
-        });
-      }
-      /* 兼容旧同步调用：内存缓存 + 启动时后台加载 */
-      const screenshotMemCache = { map: null, pending: null };
-      async function loadScreenshotsAsync() {
-        const idb = await screenshotDbAll();
-        let legacy = {};
-        try { legacy = JSON.parse(localStorage.getItem(SCREENSHOT_KEY) || "{}"); } catch (err) { legacy = {}; }
-        return Object.assign(idb, legacy);
-      }
-      function ensureScreenshotsLoaded() {
-        if (!screenshotMemCache.pending) {
-          screenshotMemCache.pending = loadScreenshotsAsync().then((map) => {
-            screenshotMemCache.map = map;
-            renderAllColumnsIfReady();
-          }).catch(() => {});
-        }
-        return screenshotMemCache.pending;
-      }
-      function renderAllColumnsIfReady() {
-        try {
-          columns.forEach((column, index) => {
-            if (column && column.product && column.product.done) renderColumn(column);
-          });
-          const manualOpen = document.querySelector("[data-manual-save]");
-          if (manualOpen) {
-            const idx = Number(manualOpen.dataset.manualSave);
-            if (columns[idx]) renderManualEdit(columns[idx]);
-          }
-        } catch (err) { /* 静默：截图缓存加载后的重绘失败不影响主流程 */ }
       }
       function getScreenshot(asin, fieldKey) {
-        const map = screenshotMemCache.map || {};
-        return map[screenshotIdFor(asin, fieldKey)] || "";
+        return loadScreenshots()[screenshotIdFor(asin, fieldKey)] || "";
       }
       function setScreenshot(asin, fieldKey, dataUrl) {
+        const map = loadScreenshots();
         const id = screenshotIdFor(asin, fieldKey);
-        if (!screenshotMemCache.map) screenshotMemCache.map = {};
-        if (dataUrl) screenshotMemCache.map[id] = dataUrl;
-        else delete screenshotMemCache.map[id];
-        screenshotDbSet(id, dataUrl).then(() => {
-          if (dataUrl) { try { localStorage.removeItem(SCREENSHOT_KEY); } catch (err) {} }
-        }).catch((err) => {
-          console.warn("截图 IndexedDB 保存失败", err);
-          showToast("截图保存失败：" + (err.message || err));
-        });
-        return true;
+        if (!dataUrl) delete map[id];
+        else map[id] = dataUrl;
+        saveScreenshots(map);
       }
       function firstPresentValue(...values) {
         for (const value of values) {
@@ -9222,40 +9100,15 @@ function finalizeReviewAnalysisState(state) {
           return;
         }
         try {
-          let dataUrl = await screenshotFileToDataUrl(file);
-          let saved = false;
-          for (const [side, quality] of [[1920, 0.9], [1600, 0.85], [1280, 0.82], [1000, 0.78], [760, 0.72], [560, 0.65], [400, 0.6]]) {
-            const compressed = await compressScreenshotDataUrl(dataUrl, side, quality);
-            saved = setScreenshot(asin, fieldKey, compressed);
-            if (saved) break;
-          }
+          const dataUrl = await screenshotFileToDataUrl(file);
+          setScreenshot(asin, fieldKey, dataUrl);
           if (column.product && column.product.done) renderColumn(column);
           const manualCard = document.querySelector('[data-manual-save="' + index + '"]');
           if (manualCard) renderManualEdit(column);
-          showToast(saved ? "截图已保存到当前竞品" : "截图保存失败，浏览器存储空间不足");
+          showToast("截图已保存到当前竞品");
         } catch (err) {
           showToast(err.message || "截图保存失败");
         }
-      }
-      function compressScreenshotDataUrl(dataUrl, maxSide = 1920, quality = 0.9) {
-        return new Promise((resolve) => {
-          const img = new Image();
-          img.onload = () => {
-            const scale = Math.min(1, maxSide / Math.max(img.width || 1, img.height || 1));
-            if (scale >= 1 && dataUrl.length < 1400000) { resolve(dataUrl); return; }
-            const canvas = document.createElement("canvas");
-            canvas.width = Math.max(1, Math.round((img.width || maxSide) * scale));
-            canvas.height = Math.max(1, Math.round((img.height || maxSide) * scale));
-            const ctx = canvas.getContext("2d");
-            ctx.imageSmoothingEnabled = true;
-            ctx.imageSmoothingQuality = "high";
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            try { resolve(canvas.toDataURL("image/jpeg", quality)); }
-            catch (err) { resolve(dataUrl); }
-          };
-          img.onerror = () => resolve(dataUrl);
-          img.src = dataUrl;
-        });
       }
       async function savePastedScreenshot(index, fieldKey, clipboardData) {
         const item = Array.from(clipboardData.items || []).find((x) => x.type && x.type.startsWith("image/"));
@@ -10339,7 +10192,7 @@ function finalizeReviewAnalysisState(state) {
         const refs = item.refs || [];
         const first = refs[0] || {};
         const chips = refs.length
-          ? '<div class="summary-asin-list">' + refs.map((ref) => '<span class="summary-asin-chip" data-summary-jump="' + esc(ref.index) + '">' + esc(COLUMN_KEYS[ref.index] || ref.asin) + '</span>').join("") + '</div>'
+          ? '<div class="summary-asin-list">' + refs.map((ref) => '<span class="summary-asin-chip" data-summary-jump="' + esc(ref.index) + '">' + esc(ref.asin) + '</span>').join("") + '</div>'
           : '<span class="empty">暂无可统计数据</span>';
         return '<div class="summary-metric-row" data-summary-jump="' + esc(first.index ?? "") + '">' +
           '<div class="summary-metric-desc">' + esc(item.label) +
@@ -10492,278 +10345,6 @@ function finalizeReviewAnalysisState(state) {
         renderOptimizationSummary();
         showToast("综合说明已保存");
       }
-
-      /* ===== 导出模块：Excel / JSON / PDF ===== */
-      const EXPORT_FIELD_ORDER = ["图片","ASIN","标题","售价","上线时间","排名","评分","评论数","变体","产品参数信息","包装尺寸及重量","30天销量(畅销变体)","历史月销","Keepa趋势","AI评论分析","产品卖点","好评点","差评点","待改善点","使用人群","使用场景","优化方向"];
-      function exportRows() {
-        return columns.map((column, index) => {
-          const product = column.product && column.product.done && !column.product.error ? buildProductFromResult(column.product) : emptyProduct(column.asin);
-          const raw = column.product?.data?.reviewsData?.rawReviews;
-          return { key: COLUMN_KEYS[index] || ("列" + (index + 1)), brand: product["品牌"] || "无数据", data: product, rawReviews: Array.isArray(raw) ? raw : [] };
-        }).filter((item) => item.data["ASIN"] || item.data["标题"]);
-      }
-      function exportValue(value) {
-        const text = String(value == null ? "" : value).trim();
-        return text || "无数据";
-      }
-      function exportLinkFor(data) {
-        return data["链接"] || amazonProductUrl(data["ASIN"], manager?.config?.general?.site || "US");
-      }
-      function buildExportJson() {
-        return {
-          exportedAt: new Date().toISOString(),
-          site: manager?.config?.general?.site || "US",
-          competitors: exportRows().map((item) => {
-            const out = {};
-            EXPORT_FIELD_ORDER.forEach((key) => {
-              out[key] = key === "ASIN" ? { value: exportValue(item.data[key]), link: exportLinkFor(item.data) } : exportValue(item.data[key]);
-            });
-            return out;
-          }),
-          optimizationSummary: buildOverallOptimizationSummaryText() || "无数据",
-        };
-      }
-      function downloadBlob(filename, blob) {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url; a.download = filename;
-        document.body.appendChild(a); a.click(); a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 4000);
-      }
-      function timestampForFile() {
-        const d = new Date();
-        const p = (n) => String(n).padStart(2, "0");
-        return d.getFullYear() + p(d.getMonth()+1) + p(d.getDate()) + "_" + p(d.getHours()) + p(d.getMinutes());
-      }
-      function xmlEsc(text) {
-        return String(text).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,"");
-      }
-      function xlsxColName(n) {
-        let s = "";
-        do { s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26) - 1; } while (n >= 0);
-        return s;
-      }
-      function xlsxCell(ref, value, opts = {}) {
-        const style = opts.style ? ' s="' + opts.style + '"' : "";
-        if (opts.number && Number.isFinite(Number(value))) return '<c r="' + ref + '"' + style + '><v>' + Number(value) + "</v></c>";
-        return '<c r="' + ref + '"' + style + ' t="inlineStr"><is><t xml:space="preserve">' + xmlEsc(String(value ?? "")) + "</t></is></c>";
-      }
-      function buildSheet1Rows(rows) {
-        const out = [];
-        out.push({ cells: [{ v: "字段维度", style: 1 }].concat(rows.map((item) => ({ v: item.brand, style: 1 }))) });
-        EXPORT_FIELD_ORDER.forEach((field) => {
-          const cells = [{ v: field, style: 1 }];
-          rows.forEach((item) => {
-            let v = exportValue(item.data[field]);
-            let style = 2;
-            if (field === "售价" && /原价|折扣|-\d+%/.test(v)) style = 3;
-            if (field === "ASIN") {
-              const link = exportLinkFor(item.data);
-              v = link ? (v + "\n" + link) : v;
-            }
-            cells.push({ v, style });
-          });
-          out.push({ cells });
-        });
-        return out;
-      }
-      function buildSheet2Rows(rows) {
-        const out = [];
-        out.push({ cells: [{ v: "ASIN", style: 1 }, { v: "星级", style: 1 }, { v: "标题", style: 1 }, { v: "评论内容", style: 1 }] });
-        rows.forEach((item) => {
-          const asin = item.data["ASIN"] || "";
-          const raw = item.rawReviews || [];
-          if (!raw.length) { out.push({ cells: [{ v: asin }, { v: "" }, { v: "" }, { v: "无数据" }] }); return; }
-          raw.forEach((r) => {
-            const text = typeof r === "string" ? r : [r.title, r.content, r.text].filter(Boolean).join("\n");
-            out.push({ cells: [{ v: asin }, { v: typeof r === "object" ? String(r.rating ?? "") : "" }, { v: typeof r === "object" ? String(r.title || "") : "" }, { v: text || "无数据" }] });
-          });
-        });
-        return out;
-      }
-      function sheetXml(rows) {
-        const body = rows.map((row, i) => {
-          const r = i + 1;
-          return '<row>' + row.cells.map((cell, c) => {
-            const ref = xlsxColName(c) + r;
-            const st = cell.style ? ' s="' + cell.style + '"' : "";
-            return '<c r="' + ref + '"' + st + ' t="inlineStr"><is><t xml:space="preserve">' + xmlEsc(cell.v ?? "") + "</t></is></c>";
-          }).join("") + '</row>';
-        }).join("");
-        return '<sheetData>' + body + '</sheetData>';
-      }
-      function buildXlsx(model, images) {
-        images = images || [];
-        const rowCount = Math.max(model.sheet1.length, 1);
-        const colCount = Math.max(model.rows.length + 1, 2);
-        const colsXml = '<cols>' +
-          '<col min="1" max="1" width="16" customWidth="1"/>' +
-          '<col min="2" max="' + colCount + '" width="34" customWidth="1"/>' +
-          '</cols>';
-        const mergeCount = 1;
-        const merges = '<mergeCells count="' + mergeCount + '"><mergeCell ref="A' + (model.sheet1.length + 2) + ':' + xlsxColName(colCount - 1) + (model.sheet1.length + 5) + '"/></mergeCells>';
-        const ws1 = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' + colsXml + sheetXml(model.sheet1) + merges + '<row r="' + (model.sheet1.length + 2) + '"><c r="A' + (model.sheet1.length + 2) + '" t="inlineStr"><is><t xml:space="preserve">' + xmlEsc("优化方向总结（A必解决 / B重要提升 / C拉开差距）与跨竞品结论：\n" + (model.summaryText || "无数据")) + '</t></is></c></row></worksheet>';
-        const ws2 = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' + sheetXml(model.sheet2) + '</worksheet>';
-        const workbook = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="竞品对比表" sheetId="1" r:id="rId1"/><sheet name="原始评论" sheetId="2" r:id="rId2"/></sheets></workbook>';
-        const rels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>';
-        const styles = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="3"><font><sz val="11"/><name val="Calibri"/></font><font><b/><color rgb="FFFFFFFF"/><sz val="11"/><name val="Calibri"/></font><font><color rgb="FFCC0000"/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF2563EB"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/></patternFill></fill></fills><borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color rgb="FFD9D9D9"/></left><right style="thin"><color rgb="FFD9D9D9"/></right><top style="thin"><color rgb="FFD9D9D9"/></top><bottom style="thin"><color rgb="FFD9D9D9"/></bottom><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment wrapText="1" vertical="top"/></xf><xf numFmtId="0" fontId="1" fillId="1" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment wrapText="1" vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="2" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment wrapText="1" vertical="top"/></xf><xf numFmtId="0" fontId="2" fillId="2" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment wrapText="1" vertical="top"/></xf></cellXfs></styleSheet>';
-        const contentTypes = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>';
-        const rootRels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>';
-        /* 图片嵌入：drawing + 媒体文件，每张图锚定到对应字段行 x 竞品列 */
-        const extraFiles = [];
-        let drawingXml = "";
-        let drawingRelsXml = "";
-        let contentExtra = "";
-        let relsExtra = "";
-        if (images.length) {
-          const relParts = [];
-          const anchorParts = [];
-          images.forEach((img, idx) => {
-            const rid = "rId" + (idx + 1);
-            const fileName = "image" + (idx + 1) + "." + img.ext;
-            extraFiles.push(["xl/media/" + fileName, img.bytes]);
-            contentExtra += '<Override PartName="/xl/media/' + fileName + '" ContentType="image/' + (img.ext === "jpg" ? "jpeg" : img.ext) + '"/>';
-            relParts.push('<Relationship Id="' + rid + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/' + fileName + '"/>');
-            const excelRow = img.row + 2;
-            const excelCol = img.col;
-            anchorParts.push('<xdr:twoCellAnchor><xdr:from><xdr:col>' + excelCol + '</xdr:col><xdr:colOff>50000</xdr:colOff><xdr:row>' + (excelRow - 1) + '</xdr:row><xdr:rowOff>50000</xdr:rowOff></xdr:from><xdr:to><xdr:col>' + (excelCol + 1) + '</xdr:col><xdr:colOff>10000</xdr:colOff><xdr:row>' + excelRow + '</xdr:row><xdr:rowOff>10000</xdr:rowOff></xdr:to><xdr:pic><xdr:nvPicPr><xdr:cNvPr id="' + (idx + 2) + '" name="' + fileName + '"/><xdr:cNvPicPr/></xdr:nvPicPr><xdr:blipFill><a:blip r:embed="' + rid + '"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill><xdr:spPr><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic><xdr:clientData/></xdr:twoCellAnchor>');
-          });
-          drawingXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' + anchorParts.join("") + '</xdr:wsDr>';
-          drawingRelsXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' + relParts.join("") + '</Relationships>';
-          contentExtra = '<Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>' + contentExtra;
-          relsExtra = '<Relationship Id="rIdDraw" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/>';
-        }
-        const ws1WithDraw = drawingXml
-          ? ws1.replace('<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">', '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">').replace("</worksheet>", '<drawing r:id="rIdDraw"/></worksheet>')
-          : ws1;
-        const contentTypesWithImages = contentExtra
-          ? contentTypes.replace("</Types>", contentExtra + "</Types>")
-          : contentTypes;
-        const zipEntries = [
-          ["[Content_Types].xml", contentTypesWithImages],
-          ["_rels/.rels", rootRels],
-          ["xl/workbook.xml", workbook],
-          ["xl/_rels/workbook.xml.rels", rels],
-          ["xl/styles.xml", styles],
-          ["xl/worksheets/sheet1.xml", ws1WithDraw],
-          ["xl/worksheets/sheet2.xml", ws2],
-          ["xl/worksheets/_rels/sheet1.xml.rels", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' + relsExtra + '</Relationships>'],
-          ["xl/drawings/drawing1.xml", drawingXml],
-          ["xl/drawings/_rels/drawing1.xml.rels", drawingRelsXml],
-        ].filter((entry) => entry[1]);
-        extraFiles.forEach((f) => zipEntries.push(f));
-        return zipCreateBlob(zipEntries.map((entry) => ({ name: entry[0], bytes: typeof entry[1] === "string" ? new TextEncoder().encode(entry[1]) : entry[1] })));
-      }
-      function buildPdfHtml(model) {
-        const headCells = model.rows.map((item) => '<th>' + xmlEsc(item.brand) + '</th>').join("");
-        const bodyCells = EXPORT_FIELD_ORDER.map((field) => {
-          const cells = model.rows.map((item) => '<td>' + xmlEsc(exportValue(item.data[field])) + '</td>').join("");
-          return '<tr><th class="fld">' + xmlEsc(field) + '</th>' + cells + '</tr>';
-        }).join("");
-        return '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>竞品分析报告</title><style>body{font-family:"Microsoft YaHei",sans-serif;margin:12px;}table{border-collapse:collapse;width:100%;table-layout:fixed;}th,td{border:1px solid #cbd5e1;padding:6px;font-size:10px;vertical-align:top;word-break:break-word;white-space:pre-wrap;}thead th{background:#2563eb;color:#fff;}tbody th.fld{background:#2563eb;color:#fff;width:8%;}.red{color:#cc0000;}@page{size:A3 landscape;margin:8mm;}</style></head><body><h2 style="margin:4px 0 8px">竞品分析报告</h2><table><thead><tr><th class="fld">字段维度</th>' + headCells + '</tr></thead><tbody>' + bodyCells + '</tbody></table><h3>优化方向</h3><pre style="white-space:pre-wrap;font-size:11px;font-family:inherit">' + xmlEsc(model.summaryText) + '</pre><script>window.onload=()=>setTimeout(()=>window.print(),300);</' + 'script></body></html>';
-      }
-      /* zip 打包器：支持文本与二进制（图片），store 模式不压缩 */
-      function zipCreateBlob(entries) {
-        const enc = new TextEncoder();
-        const crcTable = (() => { const t = []; for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
-        const crc32 = (buf) => { let c = -1; for (let i = 0; i < buf.length; i++) c = (c >>> 8) ^ crcTable[(c ^ buf[i]) & 0xFF]; return (c ^ -1) >>> 0; };
-        const chunks = [], central = [];
-        let offset = 0;
-        entries.forEach((entry) => {
-          const nameBytes = enc.encode(entry.name);
-          const data = entry.bytes;
-          const crc = crc32(data);
-          const local = new Uint8Array(30 + nameBytes.length);
-          const dv = new DataView(local.buffer);
-          dv.setUint32(0, 0x04034b50, true); dv.setUint16(4, 20, true);
-          dv.setUint32(14, crc, true); dv.setUint32(18, data.length, true); dv.setUint32(22, data.length, true);
-          dv.setUint16(26, nameBytes.length, true);
-          local.set(nameBytes, 30);
-          chunks.push(local, data);
-          const cen = new Uint8Array(46 + nameBytes.length);
-          const cv = new DataView(cen.buffer);
-          cv.setUint32(0, 0x02014b50, true); cv.setUint16(4, 20, true); cv.setUint16(6, 20, true);
-          cv.setUint32(16, crc, true); cv.setUint32(20, data.length, true); cv.setUint32(24, data.length, true);
-          cv.setUint16(28, nameBytes.length, true);
-          cv.setUint32(42, offset, true);
-          cen.set(nameBytes, 46);
-          central.push(cen);
-          offset += local.length + data.length;
-        });
-        const centralSize = central.reduce((sum, c) => sum + c.length, 0);
-        const end = new Uint8Array(22);
-        const ev = new DataView(end.buffer);
-        ev.setUint32(0, 0x06054b50, true);
-        ev.setUint16(8, entries.length, true); ev.setUint16(10, entries.length, true);
-        ev.setUint32(12, centralSize, true); ev.setUint32(16, offset, true);
-        return new Blob(chunks.concat(central, [end]), { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-      }
-      async function fetchImageBytes(src) {
-        try {
-          if (!src) return null;
-          const res = await fetch(src);
-          if (!res.ok) return null;
-          const bytes = new Uint8Array(await res.arrayBuffer());
-          return bytes.length > 100 ? bytes : null;
-        } catch (err) { return null; }
-      }
-      function detectImageExt(bytes) {
-        if (!bytes || bytes.length < 4) return "png";
-        if (bytes[0] === 0x89 && bytes[1] === 0x50) return "png";
-        if (bytes[0] === 0xFF && bytes[1] === 0xD8) return "jpg";
-        if (bytes[0] === 0x47 && bytes[1] === 0x49) return "gif";
-        return "png";
-      }
-      /* 收集可嵌入图片：产品主图 + IndexedDB 截图位；失败返回 null 由链接文本兜底 */
-      async function collectExportImages(rows) {
-        const shotFields = { "变体": 8, "30天销量(畅销变体)": 11, "历史月销": 12, "Keepa趋势": 13, "AI评论分析": 14 };
-        await ensureScreenshotsLoaded();
-        const out = [];
-        for (let i = 0; i < rows.length; i++) {
-          const item = rows[i];
-          const col = i + 1;
-          const asin = item.data["ASIN"] || "";
-          const productImg = item.data["图片"] || "";
-          const bytes = productImg ? await fetchImageBytes(productImg) : null;
-          if (bytes) out.push({ bytes, ext: detectImageExt(bytes), col, row: 0 });
-          for (const [fieldKey, row] of Object.entries(shotFields)) {
-            const dataUrl = getScreenshot(asin, fieldKey);
-            if (!dataUrl) continue;
-            const shotBytes = await fetchImageBytes(dataUrl);
-            if (shotBytes) out.push({ bytes: shotBytes, ext: detectImageExt(shotBytes), col, row });
-          }
-        }
-        return out;
-      }
-      async function exportData(type) {
-        if (!exportRows().length) { showToast("暂无可导出的竞品数据，请先查询"); return; }
-        showToast("正在生成文件，请稍候");
-        await new Promise((r) => setTimeout(r, 60));
-        try {
-          if (type === "json") {
-            downloadBlob("竞品分析_" + timestampForFile() + ".json", new Blob([JSON.stringify(buildExportJson(), null, 2)], { type: "application/json" }));
-            return;
-          }
-          if (type === "xlsx") {
-            const rows = exportRows();
-            const images = await collectExportImages(rows);
-            const model = { rows, sheet1: buildSheet1Rows(rows), sheet2: buildSheet2Rows(rows), summaryText: buildOverallOptimizationSummaryText() || "无数据" };
-            downloadBlob("竞品分析_" + timestampForFile() + ".xlsx", buildXlsx(model, images));
-            showToast(images.length ? "已嵌入 " + images.length + " 张图片" : "图片源不可嵌入，已保留链接");
-            return;
-          }
-          if (type === "pdf") {
-            const model = { rows: exportRows(), summaryText: buildOverallOptimizationSummaryText() || "无数据" };
-            const win = window.open("", "_blank");
-            if (!win) { showToast("浏览器拦截了弹窗，请允许弹窗后重试"); return; }
-            win.document.write(buildPdfHtml(model));
-            win.document.close();
-          }
-        } catch (err) {
-          showToast("导出失败：" + (err.message || err));
-        }
-      }
-
       function restoreAutoOptimizationOverview() {
         clearManualOverviewEdit();
         summaryOverviewEditMode = false;
@@ -10817,10 +10398,7 @@ function finalizeReviewAnalysisState(state) {
       }
       function reportSourceText(item) {
         const asins = (item.asins || []).filter(Boolean);
-        const source = asins.length ? asins.map((asin) => {
-          const ref = (item.refs || []).find((r) => r.asin === asin && Number.isFinite(Number(r.index)));
-          return ref ? (COLUMN_KEYS[Number(ref.index)] || asin) : asin;
-        }).join("、") : "暂无可统计数据";
+        const source = asins.length ? asins.join("、") : "暂无可统计数据";
         const sample = findReportReviewSample(asins, item.label);
         return "依据：" + source + "；" + (sample ? "原始评论样本：" + sample : "原始字段样本：" + item.label);
       }
@@ -11421,13 +10999,6 @@ function finalizeReviewAnalysisState(state) {
         savePastedScreenshot(index, fieldKey, e.clipboardData).then((handled) => {
           if (!handled) showToast("剪贴板里没有可粘贴的图片");
         });
-      });
-
-      document.getElementById("exportSelect").addEventListener("change", (e) => {
-        const type = e.target.value;
-        if (!type) return;
-        e.target.value = "";
-        exportData(type);
       });
       document.getElementById("summaryImportBtn").addEventListener("click", openSummaryImport);
       document.getElementById("summaryRefreshBtn").addEventListener("click", () => {
@@ -12223,7 +11794,6 @@ function finalizeReviewAnalysisState(state) {
         renderProviderLogs();
         updateSourceStatus();
       }
-      ensureScreenshotsLoaded();
       init();
     </script>
   </body>
