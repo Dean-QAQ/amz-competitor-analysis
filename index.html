@@ -2799,18 +2799,107 @@ function reviewMainSourceLabel(sourceId) {
         try { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); } catch (err) { console.warn("配置保存失败", err); }
       }
       function loadCache() {
+        /* 同步快速通道：只读 localStorage 小缓存；IndexedDB 大缓存在启动时异步合并 */
         try {
           const raw = localStorage.getItem(CACHE_KEY);
           return raw ? JSON.parse(raw) : {};
         } catch (err) { return {}; }
       }
       function saveCache(cache) {
+        persistCacheSnapshot(cache);
+      }
+      /* 主数据缓存迁移到 IndexedDB：localStorage 只有约 5MB，六列评论数据容易顶爆； */
+      /* IndexedDB 配额一般是磁盘可用空间的较大比例，容量 GB 级。 */
+      const CACHE_DB_NAME = "amz_competitor_cache";
+      let cacheDbPromise = null;
+      function cacheDb() {
+        if (!cacheDbPromise) {
+          cacheDbPromise = new Promise((resolve, reject) => {
+            const req = indexedDB.open(CACHE_DB_NAME, 1);
+            req.onupgradeneeded = () => { req.result.createObjectStore("cache"); };
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error || new Error("IndexedDB 打开失败"));
+          });
+        }
+        return cacheDbPromise;
+      }
+      const CACHE_EXPIRE_MS = 30 * 24 * 60 * 60 * 1000;
+      /* 过期判断只看 createTime 辅助字段，绝不触碰条目内的业务数据 */
+      function cacheEntryExpired(entry) {
+        if (!entry || typeof entry !== "object") return true;
+        const created = Number(entry.createTime || entry.ts || 0);
+        return created > 0 && Date.now() - created > CACHE_EXPIRE_MS;
+      }
+      function pruneExpiredCacheEntries(map) {
+        const out = {};
+        let removed = 0;
+        Object.keys(map || {}).forEach((key) => {
+          if (cacheEntryExpired(map[key])) { removed++; return; }
+          out[key] = map[key];
+        });
+        return { map: out, removed };
+      }
+      /* 写入前补齐辅助字段：旧数据（含 localStorage 迁移）首写时赋 createTime */
+      function stampCacheEntries(map) {
+        const now = Date.now();
+        Object.keys(map || {}).forEach((key) => {
+          const entry = map[key];
+          if (!entry || typeof entry !== "object") return;
+          if (!entry.createTime) entry.createTime = Number(entry.ts) || now;
+          entry.expireDays = 30;
+        });
+        return map;
+      }
+      async function cacheDbGetAll() {
+        try {
+          const db = await cacheDb();
+          const raw = await new Promise((resolve) => {
+            const req = db.transaction("cache", "readonly").objectStore("cache").get("main");
+            req.onsuccess = () => resolve(req.result || {});
+            req.onerror = () => resolve({});
+          });
+          /* 页面初始化预热前扫描：整条删除过期缓存，不改单条内部数据 */
+          const pruned = pruneExpiredCacheEntries(raw);
+          if (pruned.removed > 0) {
+            try {
+              await new Promise((resolve, reject) => {
+                const tx = db.transaction("cache", "readwrite");
+                tx.objectStore("cache").put(pruned.map, "main");
+                tx.oncomplete = () => resolve(true);
+                tx.onerror = () => reject(tx.error || new Error("清理写回失败"));
+              });
+              console.info("缓存自动清理：已删除 " + pruned.removed + " 条过期记录");
+            } catch (err) { console.warn("过期缓存写回失败", err); }
+          }
+          return pruned.map;
+        } catch (err) { return {}; }
+      }
+      async function cacheDbSetAll(map) {
+        try {
+          stampCacheEntries(map);
+          const db = await cacheDb();
+          const pruned = pruneExpiredCacheEntries(map);
+          if (pruned.removed > 0) {
+            console.info("写入时顺带清理 " + pruned.removed + " 条过期缓存");
+            try { localStorage.removeItem(CACHE_KEY); } catch (err) {}
+          }
+          return await new Promise((resolve, reject) => {
+            const tx = db.transaction("cache", "readwrite");
+            tx.objectStore("cache").put(pruned.map, "main");
+            tx.oncomplete = () => resolve(true);
+            tx.onerror = () => reject(tx.error || new Error("IndexedDB 写入失败"));
+          });
+        } catch (err) { console.warn("IndexedDB 缓存保存失败", err); return false; }
+      }
+      /* 内存缓存落地：默认写 IndexedDB；对象很小（<64KB）时同步写 localStorage 作快速通道， */
+      /* 小数据刷新页面零等待，大数据不受 5MB 限制。 */
+      function persistCacheSnapshot(cache) {
         try {
           const serialized = JSON.stringify(cache);
-          localStorage.setItem(CACHE_KEY, serialized);
-          const readback = localStorage.getItem(CACHE_KEY);
-          if (readback === null) console.warn("localStorage 不可用，缓存仅保留在内存");
-        } catch (err) { console.warn("缓存保存失败", err); }
+          if (serialized.length < 64 * 1024) localStorage.setItem(CACHE_KEY, serialized);
+          else localStorage.removeItem(CACHE_KEY);
+        } catch (err) { /* localStorage 满或不可用时忽略，主存储已是 IndexedDB */ }
+        cacheDbSetAll(cache);
       }
       function loadKeepaQuota() {
         try { return Number(localStorage.getItem(QUOTA_KEY)) || null; } catch (err) { return null; }
@@ -9598,11 +9687,50 @@ function finalizeReviewAnalysisState(state) {
           return parsed && typeof parsed === "object" ? parsed : {};
         } catch (err) { return {}; }
       }
-      function saveManualReviewSnapshots(map) {
-        try { localStorage.setItem(MANUAL_REVIEW_SNAPSHOT_KEY, JSON.stringify(map || {})); } catch (err) {
-          console.warn("人工评论快照保存失败", err);
-          manager.addLog(map && Object.values(map)[0] && Object.values(map)[0].asin || "", "reviewsData", "人工评论快照保存失败，本次会话内仍按人工评论优先分析", "warn");
+      /* 人工评论快照：同样迁移到 IndexedDB，避免 5MB 限制；内存缓存保证同步读取 */
+      const manualReviewMem = { loaded: false, map: {} };
+      async function loadManualReviewSnapshotsAsync() {
+        if (manualReviewMem.loaded) return manualReviewMem.map;
+        let idbMap = {};
+        try {
+          const db = await cacheDb();
+          idbMap = await new Promise((resolve) => {
+            const req = db.transaction("cache", "readonly").objectStore("cache").get("manualReviews");
+            req.onsuccess = () => resolve(req.result || {});
+            req.onerror = () => resolve({});
+          });
+        } catch (err) { idbMap = {}; }
+        let legacy = {};
+        try { legacy = JSON.parse(localStorage.getItem(MANUAL_REVIEW_SNAPSHOT_KEY) || "{}"); } catch (err) { legacy = {}; }
+        manualReviewMem.map = Object.assign({}, legacy, idbMap);
+        manualReviewMem.loaded = true;
+        /* 旧 localStorage 数据迁移进 IndexedDB 后清掉，释放空间 */
+        if (Object.keys(legacy).length && Object.keys(idbMap).length) { try { localStorage.removeItem(MANUAL_REVIEW_SNAPSHOT_KEY); } catch (err) {} }
+        return manualReviewMem.map;
+      }
+      function loadManualReviewSnapshots() {
+        /* 同步接口：启动时已预热；预热前内存里是空对象，异步完成后由调用方刷新 */
+        return manualReviewMem.loaded ? manualReviewMem.map : (function(){ try { return JSON.parse(localStorage.getItem(MANUAL_REVIEW_SNAPSHOT_KEY) || "{}") || {}; } catch (err) { return {}; } })();
+      }
+      async function saveManualReviewSnapshotsAsync(map) {
+        manualReviewMem.map = map || {};
+        manualReviewMem.loaded = true;
+        try {
+          const db = await cacheDb();
+          await new Promise((resolve, reject) => {
+            const tx = db.transaction("cache", "readwrite");
+            tx.objectStore("cache").put(manualReviewMem.map, "manualReviews");
+            tx.oncomplete = () => resolve(true);
+            tx.onerror = () => reject(tx.error || new Error("IndexedDB 写入失败"));
+          });
+          try { localStorage.removeItem(MANUAL_REVIEW_SNAPSHOT_KEY); } catch (err) {}
+        } catch (err) {
+          console.warn("人工评论快照 IndexedDB 保存失败", err);
+          try { localStorage.setItem(MANUAL_REVIEW_SNAPSHOT_KEY, JSON.stringify(manualReviewMem.map)); } catch (err2) {}
         }
+      }
+      function saveManualReviewSnapshots(map) {
+        saveManualReviewSnapshotsAsync(map);
       }
       function setManualReviewSnapshot(asin, site, rows) {
         const id = manualReviewSnapshotId(asin, site);
@@ -12258,7 +12386,23 @@ function finalizeReviewAnalysisState(state) {
         updateSourceStatus();
       }
       ensureScreenshotsLoaded();
-      init();
+      (async () => {
+        /* 启动时先把 IndexedDB 里的完整缓存合并进内存，再初始化页面 */
+        try {
+          const idbCache = await cacheDbGetAll();
+          if (idbCache && Object.keys(idbCache).length) {
+            const managerRef = typeof manager !== "undefined" && manager ? manager : null;
+            if (managerRef) {
+              /* localStorage 快速通道数据也过一遍过期过滤，防止已清理条目复活 */
+              const merged = pruneExpiredCacheEntries(Object.assign({}, idbCache, managerRef.cache || {})).map;
+              managerRef.cache = merged;
+              if (!localStorage.getItem(CACHE_KEY)) persistCacheSnapshot(merged);
+            }
+          }
+        } catch (err) { console.warn("启动缓存预热失败", err); }
+        await loadManualReviewSnapshotsAsync();
+        init();
+      })();
     </script>
   </body>
 </html>
